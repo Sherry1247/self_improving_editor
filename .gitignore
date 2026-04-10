@@ -4,5 +4,3 @@ __pycache__/
 
 # 不一定要提交的本地数据
 data/images/edited/
-data/images/*.jpg
-data/images/*.png
