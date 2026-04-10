@@ -1,0 +1,16 @@
+filename,object,action,background
+adult_sit_river_01.jpg,adult_person,sit,river
+adult_sit_river_02.jpg,adult_person,sit,river
+adult_sit_river_03.jpg,adult_person,sit,river
+adult_stand_mountain_01.jpg,adult_person,stand,mountain
+adult_stand_mountain_02.jpg,adult_person,stand,mountain
+adult_stand_mountain_03.jpg,adult_person,stand,mountain
+adult_stand_river_01.jpg,adult_person,stand,river
+adult_stand_river_02.jpg,adult_person,stand,river
+adult_stand_river_03.jpg,adult_person,stand,river
+dog_sit_mountain_01.jpg,dog,sit,mountain
+dog_sit_mountain_02.jpg,dog,sit,mountain
+dog_sit_mountain_03.jpg,dog,sit,mountain
+dog_sit_river_01.jpg,dog,sit,river
+dog_sit_river_02.jpg,dog,sit,river
+dog_sit_river_03.jpg,dog,sit,river
