@@ -1,0 +1,16 @@
+filename,object,action,background,score,iou,orig_cls,edit_cls
+adult_sit_river_01.jpg,adult_person,sit,river,0.7895,0.7895,0,0
+adult_sit_river_02.jpg,adult_person,sit,river,0.9565,0.9565,0,0
+adult_sit_river_03.jpg,adult_person,sit,river,0.9925,0.9925,0,0
+adult_stand_mountain_01.jpg,adult_person,stand,mountain,0.9743,0.9743,0,0
+adult_stand_mountain_02.jpg,adult_person,stand,mountain,1.0000,1.0000,0,0
+adult_stand_mountain_03.jpg,adult_person,stand,mountain,0.9828,0.9828,0,0
+adult_stand_river_01.jpg,adult_person,stand,river,0.9825,0.9825,0,0
+adult_stand_river_02.jpg,adult_person,stand,river,0.9841,0.9841,0,0
+adult_stand_river_03.jpg,adult_person,stand,river,0.5199,0.5199,0,0
+dog_sit_mountain_01.jpg,dog,sit,mountain,0.9902,0.9902,16,16
+dog_sit_mountain_02.jpg,dog,sit,mountain,0.9824,0.9824,16,16
+dog_sit_mountain_03.jpg,dog,sit,mountain,0.9676,0.9676,16,16
+dog_sit_river_01.jpg,dog,sit,river,0.9818,0.9818,16,16
+dog_sit_river_02.jpg,dog,sit,river,0.9900,0.9900,16,16
+dog_sit_river_03.jpg,dog,sit,river,0.9713,0.9713,16,16
