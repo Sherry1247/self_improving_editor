@@ -1,5 +1,7 @@
 import csv
+import os
 from pathlib import Path
+from shutil import copy2
 
 import cv2
 import numpy as np
@@ -10,10 +12,17 @@ from ultralytics import YOLO
 
 # ---------- 0. 路径配置 ----------
 
+# 本文件: self_improving_editor/src/closed_loop_editor.py
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-IMG_DIR = DATA_DIR / "images"
-LABELS_PATH = DATA_DIR / "labels.csv"
-METRICS_CSV = DATA_DIR / "metrics.csv"   # 存 IoU / score 等
+IMG_DIR = DATA_DIR / "images"             # 顶层 images 目录
+ORIG_IMG_DIR = IMG_DIR / "original"       # 原始图片统一放这里
+EDITED_DIR = IMG_DIR / "edited"           # 编辑后的图片
+BOXES_ROOT = IMG_DIR / "boxes"            # 带框可视化
+BOXES_ORIG_DIR = BOXES_ROOT / "orig"
+BOXES_EDIT_DIR = BOXES_ROOT / "edit"
+
+LABELS_PATH = DATA_DIR / "labels.csv"     # 如果你用 labels-2.csv，改成那个名字
+METRICS_CSV = DATA_DIR / "metrics.csv"    # 每次运行会覆盖
 
 
 # ---------- 1. 读取 labels.csv ----------
@@ -21,10 +30,9 @@ METRICS_CSV = DATA_DIR / "metrics.csv"   # 存 IoU / score 等
 def load_labels(labels_path=LABELS_PATH):
     if not labels_path.exists():
         raise FileNotFoundError(
-            f"labels.csv not found at {labels_path!s}.\n"
+            f"labels csv not found at {labels_path!s}.\n"
             f"Expected labels.csv under the repository 'data' directory."
         )
-
     rows = []
     with labels_path.open() as f:
         reader = csv.DictReader(f)
@@ -33,9 +41,35 @@ def load_labels(labels_path=LABELS_PATH):
     return rows
 
 
-# ---------- 2. YOLOv8l 检测 + 结构评分 ----------
+# ---------- 2. 备份原始图片到 data/images/original ----------
 
-# 用大一点的模型提升检测能力（还是 COCO：0=person, 16=dog）
+def backup_originals():
+    """
+    确保所有在 labels 里的文件名，在 data/images/original/ 下都有一份。
+    如果 original 里还没有，但 images/ 下有，就 copy 一份过去。
+    不会删除 / 覆盖任何东西。
+    """
+    ORIG_IMG_DIR.mkdir(parents=True, exist_ok=True)
+
+    rows = load_labels()
+    for row in rows:
+        fn = row["filename"]
+        dst = ORIG_IMG_DIR / fn
+        if dst.exists():
+            continue
+
+        # 原来散装的路径：data/images/filename
+        src = IMG_DIR / fn
+        if src.exists():
+            copy2(src, dst)
+            print(f"[backup] copied {src} -> {dst}")
+        else:
+            print(f"[warning] cannot find original image for {fn}")
+
+
+# ---------- 3. YOLOv8 检测 + 结构评分 ----------
+
+# 0=person, 16=dog (COCO); 用 l 模型做检测
 det_model = YOLO("yolov8l.pt")
 
 
@@ -87,27 +121,49 @@ def bbox_iou(boxA, boxB):
     return interArea / float(boxAArea + boxBArea - interArea)
 
 
-def visualize_boxes(orig_path, edited_img, orig_box, edit_box, out_prefix="debug"):
-    """把检测到的 bbox 画在原图和编辑图上，方便肉眼检查。"""
+def visualize_boxes(orig_path, edited_img, orig_box, edit_box,
+                    orig_cls=None, edit_cls=None, out_prefix="debug"):
+    """
+    画绿框 + 类别文字，并分别保存到:
+      data/images/boxes/orig/<name>.jpg
+      data/images/boxes/edit/<name>.jpg
+    """
+    # 确保目录存在
+    BOXES_ORIG_DIR.mkdir(parents=True, exist_ok=True)
+    BOXES_EDIT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 原图（统一 resize 到 384x384 再画框）
     orig = Image.open(str(orig_path)).convert("RGB")
     orig = orig.resize((384, 384), Image.LANCZOS)
     orig = cv2.cvtColor(np.array(orig), cv2.COLOR_RGB2BGR)
 
+    # 编辑图（已经是 384x384）
     edit = cv2.cvtColor(np.array(edited_img), cv2.COLOR_RGB2BGR)
 
+    # 画原图框 + 文本
     if orig_box is not None:
         x1, y1, x2, y2 = orig_box
         cv2.rectangle(orig, (x1, y1), (x2, y2), (0, 255, 0), 4)
+        if orig_cls is not None:
+            label = det_model.names.get(int(orig_cls), str(orig_cls))
+            cv2.putText(orig, label,
+                        (x1, max(y1 - 10, 0)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                        (0, 255, 0), 2, cv2.LINE_AA)
 
+    # 画编辑图框 + 文本
     if edit_box is not None:
         x1, y1, x2, y2 = edit_box
         cv2.rectangle(edit, (x1, y1), (x2, y2), (0, 255, 0), 4)
+        if edit_cls is not None:
+            label = det_model.names.get(int(edit_cls), str(edit_cls))
+            cv2.putText(edit, label,
+                        (x1, max(y1 - 10, 0)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                        (0, 255, 0), 2, cv2.LINE_AA)
 
-    debug_dir = IMG_DIR / "debug_boxes"
-    debug_dir.mkdir(exist_ok=True)
-
-    cv2.imwrite(str(debug_dir / f"{out_prefix}_orig.jpg"), orig)
-    cv2.imwrite(str(debug_dir / f"{out_prefix}_edit.jpg"), edit)
+    cv2.imwrite(str(BOXES_ORIG_DIR / f"{out_prefix}.jpg"), orig)
+    cv2.imwrite(str(BOXES_EDIT_DIR / f"{out_prefix}.jpg"), edit)
 
 
 def structural_score(orig_path, edited_img):
@@ -122,6 +178,7 @@ def structural_score(orig_path, edited_img):
     print(f"  edit_cls={edit_cls}, edit_box={edit_box}")
 
     visualize_boxes(orig_path, edited_img, orig_box, edit_box,
+                    orig_cls=orig_cls, edit_cls=edit_cls,
                     out_prefix=Path(orig_path).stem)
 
     if orig_cls is None or edit_cls is None:
@@ -138,7 +195,7 @@ def structural_score(orig_path, edited_img):
     return score, iou, orig_cls, edit_cls
 
 
-# ---------- 3. InstructPix2Pix 设置 ----------
+# ---------- 4. InstructPix2Pix 设置 ----------
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -183,28 +240,33 @@ def edit_once(img_path, prompt):
     return result.images[0]
 
 
-# ---------- 4. prompt refinement ----------
+# ---------- 5. prompt refinement ----------
 
 def refine_prompt(base_prompt, scores):
+    """
+    简单 rule-based：结构分太低时，更强调主体不变。
+    后面可以换成 LLM。
+    """
     p = base_prompt
     if scores["struct"] < 0.5 and "keep the main subject" not in p:
         p = base_prompt + ", keep the main subject exactly the same"
     return p
 
 
-# ---------- 5. 单张图片 closed loop ----------
+# ---------- 6. 单张图片 closed-loop ----------
 
 def iterative_edit(row, max_iter=1, threshold=0.5):
     filename = row["filename"]
-    obj = row["object"]      # 对应 subject
-    action = row["action"]   # 对应 pose
-    bg = row["background"]   # 对应 place
+    obj = row["object"]
+    action = row["action"]
+    bg = row["background"]
 
-    img_path = IMG_DIR / filename
+    # 所有编辑都从 original_images 里的原图开始
+    img_path = ORIG_IMG_DIR / filename
 
     base_prompt = (
-        f"change the background {bg} to something different, "
-        f"keep the {obj} and its {action} pose unchanged"
+        f"replace the current {bg} background with a different scene, "
+        f"while keeping the {obj} and its {action} pose unchanged, natural lighting, realistic photo"
     )
     p_t = base_prompt
 
@@ -235,9 +297,8 @@ def iterative_edit(row, max_iter=1, threshold=0.5):
         p_t = refine_prompt(base_prompt, {"struct": s_struct})
 
     # 保存编辑结果
-    out_dir = IMG_DIR / "edited"
-    out_dir.mkdir(exist_ok=True)
-    out_path = out_dir / filename.replace(".jpg", "_edited.jpg")
+    EDITED_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = EDITED_DIR / filename.replace(".jpg", "_edited.jpg")
     best_img.save(out_path)
     print(f"Saved best edit to {out_path}, score={best_score:.3f}")
 
@@ -261,37 +322,14 @@ def iterative_edit(row, max_iter=1, threshold=0.5):
             best_edit_cls,
         ])
 
-# -----------util function -------
-def get_subject_masks_for_384(img_path, cls_ids=(0, 16)):
-    """
-    在 384x384 尺度下生成主体 / 背景 mask。
-    返回 subject_mask, background_mask，shape=(384,384)，值为0或1。
-    """
-    img = Image.open(str(img_path)).convert("RGB")
-    img = img.resize((384, 384), Image.LANCZOS)
-    bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-    h, w = bgr.shape[:2]
 
-    results = det_model(bgr)[0]
-    subject_mask = np.zeros((h, w), dtype=np.uint8)
-
-    for box in results.boxes:
-        cls_id = int(box.cls[0].item())
-        if cls_id in cls_ids:
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            x1 = max(0, min(x1, w-1))
-            x2 = max(0, min(x2, w))
-            y1 = max(0, min(y1, h-1))
-            y2 = max(0, min(y2, h))
-            subject_mask[y1:y2, x1:x2] = 1
-
-    background_mask = 1 - subject_mask
-    return subject_mask, background_mask
-
-# ---------- 6. main：跑前 15 张 ----------
+# ---------- 7. main：跑前 15 张 ----------
 
 def main():
-    # 每次运行前清空旧 metrics
+    # 先备份所有原图到 data/images/original/
+    backup_originals()
+
+    # 每次运行前清空旧 metrics.csv
     if METRICS_CSV.exists():
         METRICS_CSV.unlink()
 
