@@ -1,0 +1,46 @@
+# Closed-loop editor configuration
+
+# Device settings
+device: auto  # "auto", "cuda", "mps", or "cpu"
+seed: 42
+precision: float16  # "float16" or "float32"
+
+# Model paths
+detector_model: yolov8l.pt
+editor_model: timbrooks/instruct-pix2pix
+clip_model: openai/clip-vit-base-patch32
+
+# Detector settings
+detector:
+  target_classes: [0, 16]  # COCO: 0=person, 16=dog
+
+# Editor settings (InstructPix2Pix)
+editor:
+  num_inference_steps: 30
+  image_guidance_scale: 1.5
+  guidance_scale: 7.5
+  size: 384
+
+# Pipeline settings
+pipeline:
+  max_iterations: 3
+  score_threshold: 0.7
+
+# Critic weights (must sum to 1.0)
+critics:
+  weights:
+    object_consistency: 0.4
+    clip_similarity: 0.3
+    instruction_alignment: 0.3
+
+# Output settings
+output:
+  base_dir: data/experiments
+  save_json: true
+  save_images: true
+  save_visualizations: true
+
+# Logging
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: null  # Set to path for file logging

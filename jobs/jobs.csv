@@ -1,0 +1,16 @@
+job_id,filename,object,action,background
+job_0001,adult_sit_river_01.jpg,adult_person,sit,river
+job_0002,adult_sit_river_02.jpg,adult_person,sit,river
+job_0003,adult_sit_river_03.jpg,adult_person,sit,river
+job_0004,adult_stand_mountain_01.jpg,adult_person,stand,mountain
+job_0005,adult_stand_mountain_02.jpg,adult_person,stand,mountain
+job_0006,adult_stand_mountain_03.jpg,adult_person,stand,mountain
+job_0007,adult_stand_river_01.jpg,adult_person,stand,river
+job_0008,adult_stand_river_02.jpg,adult_person,stand,river
+job_0009,adult_stand_river_03.jpg,adult_person,stand,river
+job_0010,dog_sit_mountain_01.jpg,dog,sit,mountain
+job_0011,dog_sit_mountain_02.jpg,dog,sit,mountain
+job_0012,dog_sit_mountain_03.jpg,dog,sit,mountain
+job_0013,dog_sit_river_01.jpg,dog,sit,river
+job_0014,dog_sit_river_02.jpg,dog,sit,river
+job_0015,dog_sit_river_03.jpg,dog,sit,river
