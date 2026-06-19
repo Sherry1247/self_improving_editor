@@ -1,0 +1,9 @@
+# MVP scoring weights (must sum to 1.0)
+weights:
+  detection: 0.7
+  count: 0.3
+
+# Thresholds used by rule-based prompt refinement
+refinement:
+  detection_threshold: 1.0   # refine when any object is lost
+  count_threshold: 1.0       # refine when any count mismatch

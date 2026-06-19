@@ -1,6 +1,10 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
+.matplotlib_cache/
+.cache/
 
 # 不一定要提交的本地数据
 data/images/edited/
+results/

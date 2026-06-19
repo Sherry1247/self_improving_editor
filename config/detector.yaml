@@ -1,0 +1,10 @@
+# Grounding DINO detector configuration
+model_id: IDEA-Research/grounding-dino-tiny
+device: auto          # auto | cuda | mps | cpu
+use_mock: false       # set true for offline CPU testing without model download
+
+box_threshold: 0.35
+text_threshold: 0.25
+
+# Dot-separated open-vocabulary query passed to Grounding DINO
+text_query: person . dog . cat . mountain . river . tree . boat . car . building . sky . ground
