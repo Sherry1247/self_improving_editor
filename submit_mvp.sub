@@ -66,15 +66,14 @@ error  = logs/job_$(Cluster).$(Process).err
 
 # -----------------------------------------------------------------------------
 # queue
-# One job per sample id. SAMPLE_ID is passed into submit.sh via `environment`.
-# Add more sample names here as the dataset grows.
 # -----------------------------------------------------------------------------
-queue SAMPLE_ID in (sample_001, sample_002)
+queue SAMPLE_ID from (
+sample_001
+sample_002
+)
 
 # -----------------------------------------------------------------------------
-# environment
-# Environment variables visible to submit.sh on the worker node.
-#   SAMPLE_ID  which data/<sample_id>/ folder to process
-#   USE_MOCK=0 use real Grounding DINO (set USE_MOCK=1 for CPU-only testing)
+# pass variables
 # -----------------------------------------------------------------------------
-environment = "SAMPLE_ID=$(SAMPLE_ID) USE_MOCK=0"
+arguments = $(SAMPLE_ID)
+environment = "USE_MOCK=0"

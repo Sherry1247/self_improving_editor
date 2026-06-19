@@ -7,4 +7,4 @@ box_threshold: 0.35
 text_threshold: 0.25
 
 # Dot-separated open-vocabulary query passed to Grounding DINO
-text_query: person . dog . cat . mountain . river . tree . boat . car . building . sky . ground
+text_query: person . dog . mountain . river . tree . boat . car . building . sky . ground
