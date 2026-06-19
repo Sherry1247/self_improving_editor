@@ -1,0 +1,9 @@
+# Grounding DINO detector configuration
+model_id: IDEA-Research/grounding-dino-tiny
+device: auto
+use_mock: false
+
+box_threshold: 0.35
+text_threshold: 0.25
+
+text_query: person . dog . cat . mountain . river . tree . boat . car . building . sky . ground

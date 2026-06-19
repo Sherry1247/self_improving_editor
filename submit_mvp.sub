@@ -1,0 +1,80 @@
+# =============================================================================
+# HTCondor submit file — Standalone Grounding DINO MVP (UW-Madison CHTC)
+# =============================================================================
+#
+# Submit from the repository root:
+#
+#   mkdir -p logs results
+#   condor_submit submit_mvp.sub
+#
+# One Condor job is queued per sample listed in the `queue` statement below.
+# Each job runs submit.sh, which calls mvp/run_experiment.py for that sample.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# universe
+# Use the vanilla universe: plain shell execution on a worker node.
+# -----------------------------------------------------------------------------
+universe = vanilla
+
+# -----------------------------------------------------------------------------
+# executable
+# Bash wrapper that sets PYTHONPATH, activates the venv, and runs the MVP.
+# -----------------------------------------------------------------------------
+executable = submit.sh
+
+# -----------------------------------------------------------------------------
+# File transfer — inputs
+# Stage these paths from the submit machine to each worker sandbox.
+#   mvp/     standalone MVP package (detectors, critics, run_experiment.py, …)
+#   config/  shared YAML configs (mvp also ships mvp/config/ internally)
+#   data/    sample_001/, sample_002/, … with before/after images + instructions
+#   submit.sh          execute script (must be executable: chmod +x submit.sh)
+#   requirements.txt   dependency reference for manual/centralized installs
+# -----------------------------------------------------------------------------
+should_transfer_files = YES
+transfer_input_files = submit.sh, mvp, config, data, requirements.txt
+
+# -----------------------------------------------------------------------------
+# File transfer — outputs
+# Return experiment artifacts to the submit machine when the job exits.
+#   results/  per-sample JSON, scores, refined_prompt.txt, summary.png
+#   logs/     per-job stdout/stderr captured by Condor + MVP log files
+# -----------------------------------------------------------------------------
+when_to_transfer_output = ON_EXIT
+transfer_output_files = results, logs
+
+# -----------------------------------------------------------------------------
+# Resource requests
+# Grounding DINO (transformers) needs a GPU; 8 GB RAM and 10 GB disk are
+# sufficient for the tiny model + a handful of sample images.
+# -----------------------------------------------------------------------------
+request_gpus   = 1
+request_cpus   = 2
+request_memory = 8GB
+request_disk   = 10GB
+
+# -----------------------------------------------------------------------------
+# Condor log files (written on the submit machine, not transferred from worker)
+#   log    cluster-level history
+#   output worker stdout (submit.sh + python prints)
+#   error  worker stderr
+# -----------------------------------------------------------------------------
+log    = logs/condor_$(Cluster).log
+output = logs/job_$(Cluster).$(Process).out
+error  = logs/job_$(Cluster).$(Process).err
+
+# -----------------------------------------------------------------------------
+# queue
+# One job per sample id. SAMPLE_ID is passed into submit.sh via `environment`.
+# Add more sample names here as the dataset grows.
+# -----------------------------------------------------------------------------
+queue SAMPLE_ID in (sample_001, sample_002)
+
+# -----------------------------------------------------------------------------
+# environment
+# Environment variables visible to submit.sh on the worker node.
+#   SAMPLE_ID  which data/<sample_id>/ folder to process
+#   USE_MOCK=0 use real Grounding DINO (set USE_MOCK=1 for CPU-only testing)
+# -----------------------------------------------------------------------------
+environment = "SAMPLE_ID=$(SAMPLE_ID) USE_MOCK=0"
