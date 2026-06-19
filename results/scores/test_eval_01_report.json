@@ -1,0 +1,77 @@
+{
+  "job_id": "test_eval_01",
+  "instruction": "make the person stand on a mountain",
+  "final_score": 0.915,
+  "critic_scores": {
+    "detection": 1.0,
+    "count": 1.0,
+    "segmentation": 1.0,
+    "spatial": 1.0,
+    "clip": 0.78,
+    "vlm": 0.82,
+    "physics": 0.75
+  },
+  "weighted_scores": {
+    "detection_weighted": 0.15,
+    "count_weighted": 0.15,
+    "segmentation_weighted": 0.15,
+    "spatial_weighted": 0.15,
+    "clip_weighted": 0.11699999999999999,
+    "vlm_weighted": 0.12299999999999998,
+    "physics_weighted": 0.07500000000000001
+  },
+  "critic_explanations": {
+    "detection": {
+      "object_recall": 1.0,
+      "object_precision": 1.0
+    },
+    "count": {
+      "count_difference": 0,
+      "counts_before": {
+        "person": 1,
+        "dog": 1,
+        "river": 1,
+        "mountain": 1,
+        "boat": 1,
+        "fish": 1,
+        "car": 1
+      },
+      "counts_after": {
+        "person": 1,
+        "dog": 1,
+        "river": 1,
+        "mountain": 1,
+        "boat": 1,
+        "fish": 1,
+        "car": 1
+      }
+    },
+    "segmentation": {
+      "mask_iou": 1.0
+    },
+    "spatial": {
+      "centroid_displacement": 0.0,
+      "area_ratio": 1.0
+    },
+    "clip": {
+      "clip_alignment": 0.78
+    },
+    "vlm": {
+      "reasoning": "VLM Analysis: The image successfully edits the background according to the instruction: 'make the person stand on a mountain'. The primary foreground object (person/dog) is well preserved in its pose. The transitions between the foreground and the new background are clean, and there are no glaring visual artifacts."
+    },
+    "physics": {
+      "physics_score": 0.75,
+      "triggered_rules": [
+        "+fish_inside_river"
+      ],
+      "rule_logs": [
+        "Reward: fish inside river (+1.0)"
+      ]
+    }
+  },
+  "prompt_refinement": {
+    "original_instruction": "make the person stand on a mountain",
+    "refined_instruction": "make the person stand on a mountain",
+    "suggestions": []
+  }
+}

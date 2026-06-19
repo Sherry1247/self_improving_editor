@@ -1,0 +1,55 @@
+# Modular Image Editing Evaluation Configuration
+
+# Runtime device settings
+device: auto  # "auto", "cuda", "mps", or "cpu"
+seed: 42
+
+# Toggle mock mode (useful for offline/CPU-only development/testing)
+use_mock: true
+
+# Model paths / Hugging Face identifiers
+models:
+  grounding_dino: "IDEA-Research/grounding-dino-tiny"
+  sam2: "facebook/sam2.1-hiera-small"
+  clip: "openai/clip-vit-base-patch32"
+
+# Default categories to query Grounding DINO for
+target_classes:
+  - "person"
+  - "dog"
+  - "river"
+  - "mountain"
+  - "boat"
+  - "fish"
+  - "car"
+
+# Critic weights for reward aggregation (should sum to 1.0)
+critics:
+  weights:
+    detection: 0.15
+    count: 0.15
+    segmentation: 0.15
+    spatial: 0.15
+    clip: 0.15
+    vlm: 0.15
+    physics: 0.10
+
+# Thresholds for scene graph spatial heuristics
+scene_graph:
+  near_threshold_px: 150        # Distance between centroids below which objects are "near"
+  standing_on_overlap: 0.2     # Minimum horizontal overlap ratio to be standing on/floating on
+  standing_on_height_diff: 50   # Maximum height difference from bottom of objA to top of objB
+  inside_iou_threshold: 0.6     # IoU / containment threshold to be considered "inside"
+
+# Physics critic scoring
+physics_rules:
+  rewards:
+    boat_floating_on_river: 1.0
+    fish_inside_river: 1.0
+  penalties:
+    person_standing_on_river: 0.8
+    car_floating_on_river: 0.9
+
+# Output directory for evaluation results
+output:
+  base_dir: "results"

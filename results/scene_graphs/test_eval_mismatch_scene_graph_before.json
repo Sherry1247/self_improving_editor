@@ -1,0 +1,148 @@
+{
+  "objects": [
+    {
+      "id": "obj_0_person",
+      "label": "person",
+      "score": 0.89,
+      "box": [
+        758,
+        1515,
+        2527,
+        6441
+      ],
+      "centroid": [
+        1642.004206158824,
+        3978.026582110559
+      ],
+      "area": 6837117
+    },
+    {
+      "id": "obj_1_dog",
+      "label": "dog",
+      "score": 0.92,
+      "box": [
+        2780,
+        3789,
+        4296,
+        6668
+      ],
+      "centroid": [
+        3537.999855503394,
+        5228.026176071012
+      ],
+      "area": 3425686
+    },
+    {
+      "id": "obj_2_river",
+      "label": "river",
+      "score": 0.78,
+      "box": [
+        0,
+        5304,
+        5055,
+        7578
+      ],
+      "centroid": [
+        2527.004186955043,
+        6440.000993037091
+      ],
+      "area": 9012755
+    },
+    {
+      "id": "obj_3_mountain",
+      "label": "mountain",
+      "score": 0.81,
+      "box": [
+        0,
+        0,
+        5055,
+        4167
+      ],
+      "centroid": [
+        2527.016409951925,
+        2083.0121596176787
+      ],
+      "area": 16522230
+    },
+    {
+      "id": "obj_4_boat",
+      "label": "boat",
+      "score": 0.85,
+      "box": [
+        1516,
+        5456,
+        3538,
+        6668
+      ],
+      "centroid": [
+        2527.002192286373,
+        6061.999330885107
+      ],
+      "area": 1924931
+    },
+    {
+      "id": "obj_5_fish",
+      "label": "fish",
+      "score": 0.75,
+      "box": [
+        2022,
+        6062,
+        2527,
+        6820
+      ],
+      "centroid": [
+        2273.9952890293603,
+        6441.023568161025
+      ],
+      "area": 300575
+    },
+    {
+      "id": "obj_6_car",
+      "label": "car",
+      "score": 0.88,
+      "box": [
+        1011,
+        4546,
+        4044,
+        6820
+      ],
+      "centroid": [
+        2527.0024706494896,
+        5683.014049555627
+      ],
+      "area": 5412342
+    }
+  ],
+  "relationships": [
+    {
+      "subject": "obj_4_boat",
+      "relation": "inside",
+      "object": "obj_2_river"
+    },
+    {
+      "subject": "obj_4_boat",
+      "relation": "inside",
+      "object": "obj_6_car"
+    },
+    {
+      "subject": "obj_5_fish",
+      "relation": "inside",
+      "object": "obj_2_river"
+    },
+    {
+      "subject": "obj_5_fish",
+      "relation": "inside",
+      "object": "obj_4_boat"
+    },
+    {
+      "subject": "obj_5_fish",
+      "relation": "inside",
+      "object": "obj_6_car"
+    },
+    {
+      "subject": "obj_6_car",
+      "relation": "inside",
+      "object": "obj_2_river"
+    }
+  ]
+}

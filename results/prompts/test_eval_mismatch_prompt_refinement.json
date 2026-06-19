@@ -1,0 +1,8 @@
+{
+  "original_instruction": "change the river background to a mountain",
+  "refined_instruction": "change the river background to a mountain. Note: Preserve the subject's shape and appearance., Maintain object positions.",
+  "suggestions": [
+    "Preserve the subject's shape and appearance.",
+    "Maintain object positions."
+  ]
+}
