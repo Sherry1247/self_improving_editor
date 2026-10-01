@@ -30,4 +30,5 @@ Thumbs.db
 
 # CHTC
 chtc/payload.tar.gz
-results/
+/results/
+chtc_results/
