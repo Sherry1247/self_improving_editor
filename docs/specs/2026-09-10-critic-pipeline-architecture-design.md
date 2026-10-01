@@ -4,7 +4,7 @@
 
 ## 1. Problem this solves
 
-Full findings are in [`PHASE1_AUDIT.md`](../../../PHASE1_AUDIT.md) (verified accurate against the repo as of this date — no commits since it was written). Summary: the repo contains two disconnected systems —
+Full findings are in [`PHASE1_AUDIT.md`](../PHASE1_AUDIT.md) (verified accurate against the repo as of this date — no commits since it was written). Summary: the repo contains two disconnected systems —
 
 - **System A** (`main.py` / `ClosedLoopPipeline`): the only system that actually runs end-to-end. Single-object YOLO detection, Pix2Pix editing, 3 shallow critics, flat weighted sum.
 - **System B** (`experiments/run_evaluation.py`): a richer, structurally-correct-for-the-research-brief critic stack (Grounding DINO, SAM2, scene graph, 7 critics, reward aggregator, prompt refiner) that is never wired to an editor and defaults to `use_mock: true`, making its scores currently meaningless.

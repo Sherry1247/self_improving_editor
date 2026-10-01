@@ -1,0 +1,15 @@
+adult_sit_river_01
+adult_sit_river_02
+adult_sit_river_03
+adult_stand_mountain_01
+adult_stand_mountain_02
+adult_stand_mountain_03
+adult_stand_river_01
+adult_stand_river_02
+adult_stand_river_03
+dog_sit_mountain_01
+dog_sit_mountain_02
+dog_sit_mountain_03
+dog_sit_river_01
+dog_sit_river_02
+dog_sit_river_03
