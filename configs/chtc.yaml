@@ -1,0 +1,9 @@
+# Overrides for CHTC GPUs (>= 24 GB). Merged on top of default.yaml.
+memory_policy: keep
+image:
+  long_side: 1024
+models:
+  sdxl_inpaint: {cpu_offload: false}
+loop:
+  n_candidates: 4
+  max_edits: 12

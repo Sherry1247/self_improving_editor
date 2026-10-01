@@ -1,6 +1,29 @@
+# environments
 venv/
+.venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# 不一定要提交的本地数据
+# model weights / caches (download with experiments/download_models.py)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+.cache/
+
+# generated data — everything here is reproducible from data/images/original
+data/cache/
 data/images/edited/
+runs/
+logs/*.out
+logs/*.err
+logs/*.log
+chtc/logs/*
+!chtc/logs/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

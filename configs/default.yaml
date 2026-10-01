@@ -1,0 +1,88 @@
+# Default config — tuned for an 8 GB laptop GPU (RTX 5060 Laptop).
+# For CHTC / bigger GPUs see configs/chtc.yaml (overrides only).
+
+device: auto            # auto | cuda | cpu
+seed: 42
+memory_policy: swap     # swap: only the model in use sits on the GPU (8 GB safe); keep: everything stays on GPU
+
+paths:
+  labels: data/labels.csv
+  images: data/images/original
+  cache: data/cache            # downscaled originals + cached before-perception
+  runs: runs                   # all experiment outputs (git-ignored)
+  hf_home: null                # optional override for the Hugging Face cache
+
+image:
+  long_side: 768               # working resolution (aspect preserved, multiples of 8)
+
+targets: [snow, beach, city, forest, indoor]
+include_swap: true             # also river <-> mountain
+
+models:
+  grounding_dino: {id: IDEA-Research/grounding-dino-base, dtype: float32}
+  sam2:           {id: facebook/sam2.1-hiera-large,      dtype: float32}
+  dinov2:         {id: facebook/dinov2-base,             dtype: float16}
+  siglip:         {id: google/siglip-so400m-patch14-384, dtype: float16}
+  depth:          {id: depth-anything/Depth-Anything-V2-Small-hf, dtype: float32}
+  ip2p:           {id: timbrooks/instruct-pix2pix,       dtype: float16}
+  sdxl_inpaint:   {id: diffusers/stable-diffusion-xl-1.0-inpainting-0.1, dtype: float16, cpu_offload: true}
+
+perception:
+  subject_box_threshold: 0.35
+  subject_text_threshold: 0.25
+  subject_nms_iou: 0.6
+  subject_min_area_frac: 0.005  # ignore tiny detections (< 0.5 % of the image)
+  old_bg_box_threshold: 0.30
+  use_depth: true
+
+critics:
+  enabled: [subject_count, identity, bg_changed,
+            silhouette, appearance, texture,
+            bg_semantic, old_bg_residue,
+            support, contact_shadow, light_harmony, halo]
+  identity:      {catastrophic_below: 0.45, lo: 0.45, hi: 0.85}
+  bg_changed:    {catastrophic_below: 0.15, lo: 0.15, hi: 0.45}
+  silhouette:    {issue_below: 0.75}
+  appearance:    {sigma: 12.0, issue_below: 0.6}
+  texture:       {lo: 0.4, hi: 0.85, issue_below: 0.6}
+  bg_semantic:   {issue_below: 0.5}
+  old_bg_residue: {issue_above: 0.3}
+  support:       {sigma: 0.08, issue_below: 0.5}
+  contact_shadow: {issue_below: 0.4}
+  light_harmony: {sigma: 18.0, issue_below: 0.5}
+  halo:          {issue_below: 0.5}
+
+aggregation:
+  method: gated_geometric      # gated_geometric | weighted_sum  (weighted_sum = legacy baseline)
+  # per-critic reliability weights inside each branch (later: learned from the violation suite AUROC)
+  weights:
+    silhouette: 1.0
+    appearance: 1.0
+    texture: 1.0
+    bg_semantic: 1.0
+    old_bg_residue: 0.7
+    support: 1.0
+    contact_shadow: 0.5
+    light_harmony: 0.7
+    halo: 0.8
+  branch_weights: {keep: 1.0, follow: 1.0, world: 1.0}
+
+editors:
+  ip2p:
+    num_inference_steps: 30
+    guidance_scale: 7.5
+    image_guidance_scale: 1.5
+  compositing:
+    num_inference_steps: 30
+    guidance_scale: 7.0
+    strength: 0.99
+    mask_dilate: 6
+    long_side: 1024             # SDXL works best near 1024
+
+loop:
+  editor: ip2p                 # ip2p | compositing
+  max_edits: 8                 # budget = number of editor calls per task
+  n_candidates: 2              # seeds per round (best-of-N)
+  threshold: 0.75
+  patience: 2                  # rounds without improvement before stopping
+  memory: true                 # cross-sample action statistics (runs/<run>/memory.json)
