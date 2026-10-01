@@ -16,6 +16,8 @@ CLAUSES: dict[str, str] = {
     "contact": "the {subject} is {pose} on the {support} with a soft contact shadow underneath",
     "light": "the lighting and color tone on the {subject} match the {target} scene",
     "edges": "clean natural edges around the {subject}",
+    "natural": "the {subject} is naturally part of the scene, with nothing attached to or wrapped around its body, "
+               "standing on a realistic {support}",
 }
 
 MAX_CLAUSES = 3

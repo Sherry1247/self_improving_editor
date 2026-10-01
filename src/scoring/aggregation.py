@@ -41,8 +41,7 @@ class GatedGeometricAggregator(Aggregator):
     name = "gated_geometric"
 
     def aggregate(self, critics: dict[str, CriticResult]) -> EvaluationResult:
-        gates = [c for c in critics.values() if c.branch == "gate"]
-        passed = not any(c.is_catastrophic for c in gates)
+        passed = not any(c.is_catastrophic for c in critics.values())  # any critic may act as a gate
         branches = self.branch_scores(critics)
         overall = 0.0
         if passed and branches:
@@ -60,9 +59,8 @@ class WeightedSumAggregator(Aggregator):
         items = [(c.score, self.weights.get(n, 1.0)) for n, c in critics.items() if c.applicable]
         wsum = sum(w for _, w in items)
         overall = sum(s * w for s, w in items) / wsum if wsum else 0.0
-        gates = [c for c in critics.values() if c.branch == "gate"]
         return EvaluationResult(critics=critics, overall=overall, branch_scores=self.branch_scores(critics),
-                                gate_passed=not any(c.is_catastrophic for c in gates), aggregator=self.name)
+                                gate_passed=not any(c.is_catastrophic for c in critics.values()), aggregator=self.name)
 
 
 AGGREGATORS = {a.name: a for a in (GatedGeometricAggregator, WeightedSumAggregator)}

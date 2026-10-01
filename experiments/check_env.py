@@ -76,15 +76,24 @@ def main():
         ("siglip", lambda: per.background_probs(img)),
         ("depth", lambda: per.depth(img)),
     ]
+    if cfg["perception"].get("use_vlm"):
+        def vlm():
+            ans = per.vlm_answers(img, mask, spec)
+            print("                answers:", {k: round(v, 3) for k, v in ans.items()})
+            return ans
+
+        steps.append(("vlm", vlm))
     if not args.skip_editor:
-        def ip2p():
+        name = cfg["loop"]["editor"]
+
+        def editor(name=name):
             from src.editors import build_editor
 
-            ed = build_editor("ip2p", cfg, reg)
+            ed = build_editor(name, cfg, reg)
             p = ed.default_params() | {"num_inference_steps": 5}
-            return ed.edit(img, spec.instruction(), p, 0, spec)
+            return ed.edit(img, spec.instruction(), p, 0, spec, mask)
 
-        steps.append(("ip2p", ip2p))
+        steps.append((name, editor))
 
     ok = True
     for name, fn in steps:

@@ -38,6 +38,7 @@ def test_loop_escapes_unchanged_and_respects_budget(tmp_path):
 def test_best_is_kept_when_a_round_regresses():
     cfg = apply_overrides(load_config(), ["loop.max_edits=6", "loop.n_candidates=1", "loop.threshold=0.99",
                                           "loop.patience=5"])
+    cfg["critics"]["enabled"].append("contact_shadow")  # the fake editor's failure mode is a missing shadow
     editor = FakeEditor(start_igs=1.5)  # clean swap from the start; pushing "edit_more" loses texture
     loop = make_loop(cfg, editor)
     before = FakePerceiver().perceive(make_scene("river")[0], SPEC)

@@ -4,6 +4,9 @@
 #   condor_submit chtc/job.sub MODE=loop   RUN=ip2p   LIST=jobs/samples.txt
 #   condor_submit chtc/job.sub MODE=loop   RUN=comp   LIST=jobs/samples.txt EDITOR=compositing
 #   condor_submit chtc/job.sub MODE=auroc  RUN=e1     LIST=jobs/one.txt
+#   condor_submit chtc/job.sub MODE=loop   RUN=qwen   LIST=jobs/samples.txt EDITOR=qwen_edit GPUMEM=75000M DISK=120GB
+#   bash chtc/pack_rescore.sh ip2p comp && \
+#   condor_submit chtc/job.sub MODE=rescore RUN=rescored LIST=jobs/one.txt EXTRA_IN=,chtc/rescore_in.tar.gz
 # One job per line of LIST (a sample id). Results come back as results/result_<RUN>_<sample>.tar.gz
 # Defaults use $(VAR:default) so that command-line assignments win
 # (a plain "RUN = smoke" line in this file would override RUN=... given to condor_submit).
@@ -16,17 +19,17 @@ environment             = "EDITOR=$(EDITOR:ip2p)"
 
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
-transfer_input_files    = chtc/payload.tar.gz
+transfer_input_files    = chtc/payload.tar.gz$(EXTRA_IN:)
 transfer_output_files   = result_$(RUN:smoke)_$(sample).tar.gz
 transfer_output_remaps  = "result_$(RUN:smoke)_$(sample).tar.gz = results/result_$(RUN:smoke)_$(sample).tar.gz"
 
 request_gpus            = 1
-gpus_minimum_memory     = 20000M
+gpus_minimum_memory     = $(GPUMEM:40000M)
 +WantGPULab             = true
 +GPUJobLength           = "short"
 request_cpus            = 4
 request_memory          = 32GB
-request_disk            = 50GB
+request_disk            = $(DISK:60GB)
 
 log    = chtc/logs/$(RUN:smoke).log
 output = chtc/logs/$(RUN:smoke)_$(sample).out

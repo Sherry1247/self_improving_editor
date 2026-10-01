@@ -19,7 +19,7 @@ from PIL import Image
 from src.models import ModelRegistry
 from src.spec import BACKGROUNDS, EditSpec
 from src.types import Detection, Perception
-from src.utils.geometry import dilate, largest_component, nms
+from src.utils.geometry import dilate, fill_holes, largest_component, nms
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ class Perceiver:
         self.pcfg = cfg.get("perception", {})
         self.cache_dir = Path(cfg.get("paths", {}).get("cache", "data/cache")) / "perception"
         self._cfg_hash = hashlib.md5(json.dumps(
-            {k: cfg["models"][k]["id"] for k in ("grounding_dino", "sam2", "dinov2", "siglip", "depth")}
+            {k: cfg["models"][k]["id"] for k in ("grounding_dino", "sam2", "dinov2", "siglip", "depth", "vlm")
+             if k in cfg["models"]}
             | {"p": self.pcfg}, sort_keys=True).encode()).hexdigest()[:8]
 
     # ------------------------------------------------------------------ public
@@ -52,7 +53,7 @@ class Perceiver:
             masks = self.segment(image, [d.box for d in dets])
             for d, m in zip(dets, masks):
                 d.mask = m
-            subject_mask = largest_component(dets[0].mask)
+            subject_mask = fill_holes(largest_component(dets[0].mask))
         else:
             subject_mask = np.zeros((h, w), bool)
 
@@ -66,8 +67,9 @@ class Perceiver:
         emb, patches = self.dino(image, subject_mask)
         depth = self.depth(image) if p.get("use_depth", True) else None
         bg_probs = self.background_probs(remove_subject(image, subject_mask))
+        vlm = self.vlm_answers(image, subject_mask, spec) if p.get("use_vlm", False) else None
         return Perception(image=image, subject_detections=dets, subject_mask=subject_mask, old_bg_mask=old_mask,
-                          depth=depth, subject_embedding=emb, patch_features=patches, bg_probs=bg_probs)
+                          depth=depth, subject_embedding=emb, patch_features=patches, bg_probs=bg_probs, vlm=vlm)
 
     def perceive_cached(self, image: np.ndarray, spec: EditSpec, key: str) -> Perception:
         """Cache keyed by sample + resolution + model ids. Valid because old-bg concepts depend only on the source."""
@@ -124,6 +126,18 @@ class Perceiver:
             if crop is not None:
                 emb = _dino_forward(b.model, _dino_tensor(crop, 224, square=True), dev, b.dtype)[0]
         return emb, patches
+
+    def vlm_answers(self, image: np.ndarray, mask: np.ndarray, spec: EditSpec) -> dict[str, float]:
+        from src.perception.vlm import VLMScorer, build_questions, question_images
+
+        out: dict[str, float] = {}
+        with self.reg.use("vlm") as b:
+            scorer = VLMScorer(b)
+            for q in build_questions(spec):
+                if q.region != "full" and not mask.any():
+                    continue
+                out[q.key] = scorer.p_yes(question_images(image, mask, q.region), q.text)
+        return out
 
     @torch.inference_mode()
     def depth(self, image: np.ndarray) -> np.ndarray:
@@ -209,7 +223,7 @@ def save_perception(p: Perception, path: Path) -> None:
         depth=p.depth if p.depth is not None else np.zeros(0),
         subject_embedding=p.subject_embedding if p.subject_embedding is not None else np.zeros(0),
         patch_features=p.patch_features.astype(np.float16) if p.patch_features is not None else np.zeros(0),
-        meta=json.dumps({"dets": dets, "bg_probs": p.bg_probs}),
+        meta=json.dumps({"dets": dets, "bg_probs": p.bg_probs, "vlm": p.vlm}),
     )
 
 
@@ -222,4 +236,5 @@ def load_perception(path: Path, image: np.ndarray) -> Perception:
     pf = opt("patch_features")
     return Perception(image=image, subject_detections=dets, subject_mask=z["subject_mask"], old_bg_mask=z["old_bg_mask"],
                       depth=opt("depth"), subject_embedding=opt("subject_embedding"),
-                      patch_features=pf.astype(np.float32) if pf is not None else None, bg_probs=meta["bg_probs"])
+                      patch_features=pf.astype(np.float32) if pf is not None else None, bg_probs=meta["bg_probs"],
+                      vlm=meta.get("vlm"))

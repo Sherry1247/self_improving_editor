@@ -22,18 +22,20 @@ Design docs: [`docs/specs/2026-09-30-pipeline-technical-design.md`](docs/specs/2
 |---|---|---|---|
 | **gate** | `subject_count` | exactly the original number of subjects (no missing / hallucinated extra) | — |
 | | `identity` | DINOv2 CLS cosine of masked subject crops | S |
-| | `bg_changed` | the background really changed (blocks the "return the input" reward hack) | G |
-| **keep** | `silhouette` | mask IoU after similarity alignment | S |
+| | `bg_changed` | the background really changed (blocks the "return the input" reward hack); graded score also counts in *follow* | G |
+| **keep** | `silhouette` | mask IoU after alignment (identity unless the subject moved); parts revealed from under the old scene (legs out of water) are not penalised | S |
 | | `appearance` | Lab distance **after removing global lighting / colour cast** (lighting may change, texture may not) | S |
 | | `texture` | DINOv2 patch cosine on the subject | S |
 | **follow** | `bg_semantic` | SigLIP zero-shot: target vs all other backgrounds, subject removed | G |
 | | `old_bg_residue` | source-scene concepts (e.g. water) left in the background | G |
 | **world** | `support` | depth continuity between the subject's lowest pixels and the ground below | C |
-| | `contact_shadow` | ground under the feet darker than its surroundings, relative to the real photo | C |
+| | `contact_shadow` | luminance heuristic — **ablation only** (AUROC 0.36 on E1), replaced by `vlm_shadow` | C |
 | | `light_harmony` | subject highlights share the scene illuminant colour, relative to the real photo | S, G |
 | | `halo` | ring around the subject still looks like the old scene | B |
+| **world (VLM)** | `vlm_support` `vlm_shadow` `vlm_surface` `vlm_integration` `vlm_lighting` | Qwen2.5-VL P(yes) on region-boxed questions, relative to the real photo (CHTC config) | C, S, full |
+| **follow (VLM)** | `vlm_background` | "Is the background a {target}?" | full |
 
-Aggregation (`aggregation.method`): `gated_geometric` (any gate fails → 0, else geometric mean of
+Aggregation (`aggregation.method`): `gated_geometric` (any catastrophic critic → 0, else geometric mean of
 keep/follow/world) or `weighted_sum` (legacy baseline, always logged as `weighted_sum_baseline`).
 
 ## Setup (Windows / Linux, 8 GB GPU is enough)
@@ -84,7 +86,10 @@ condor_submit chtc/job.sub MODE=check RUN=check1 LIST=jobs/one.txt     # 1. GPU 
 condor_submit chtc/job.sub MODE=loop  RUN=smoke  LIST=jobs/smoke.txt EXTRA="--targets snow --save-candidates"
 condor_submit chtc/job.sub MODE=loop  RUN=ip2p   LIST=jobs/samples.txt # 15 jobs, 90 tasks
 condor_submit chtc/job.sub MODE=loop  RUN=comp   LIST=jobs/samples.txt EDITOR=compositing
+condor_submit chtc/job.sub MODE=loop  RUN=qwen   LIST=jobs/samples.txt EDITOR=qwen_edit GPUMEM=75000M DISK=120GB
 condor_submit chtc/job.sub MODE=auroc RUN=e1     LIST=jobs/one.txt     # critic AUROC on all samples
+bash chtc/pack_rescore.sh ip2p comp                                    # re-score finished runs with current critics
+condor_submit chtc/job.sub MODE=rescore RUN=rescored LIST=jobs/one.txt EXTRA_IN=,chtc/rescore_in.tar.gz
 condor_q                                                               # watch; logs in chtc/logs/
 bash chtc/collect.sh ip2p                                              # unpack results -> runs/ip2p/summary.csv
 ```
@@ -104,7 +109,7 @@ src/perception/ Grounding DINO, SAM 2, DINOv2, SigLIP, Depth Anything V2 -> Perc
 src/regions/    S / B / C / G partition from masks
 src/critics/    gate.py keep.py follow.py world.py
 src/scoring/    aggregators
-src/editors/    InstructPix2Pix, compositing baseline (SDXL inpainting)
+src/editors/    InstructPix2Pix, compositing baseline (SDXL inpainting), Qwen-Image-Edit
 src/refinement/ prompt clauses, issue -> action router, action memory
 src/pipelines/  Evaluator, RefinementLoop
 validation/     controlled physical-violation suite

@@ -13,6 +13,7 @@ from src.types import CriticResult, IssueType
 from fakes import FakePerceiver, make_scene, subject_mask
 
 CFG = load_config()
+CFG["critics"]["enabled"] = CFG["critics"]["enabled"] + ["contact_shadow"]  # ablation critic, tested here
 SPEC = build_spec("dog_sit_river_01", "dog", "sit", "river", "snow")
 
 

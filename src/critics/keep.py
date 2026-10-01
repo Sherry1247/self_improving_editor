@@ -15,15 +15,39 @@ from src.utils.color import reinhard_match, to_lab
 from src.utils.geometry import erode, mask_iou, warp_image
 
 
+def revealed_allowed(ctx: CriticContext) -> np.ndarray:
+    """After-subject pixels that were hidden by the old scene in the before image and may legitimately appear.
+
+    Example: a dog standing in a river has its legs under water; after moving it to rocky ground the legs
+    must be regenerated (a covariant change). Growth is allowed only into the before image's old-background
+    region (water) BELOW the subject's centre, never sideways or above.
+    """
+    b, a = ctx.regions.aligned_before_subject, ctx.after.subject_mask
+    excess = a & ~b
+    if not excess.any() or not b.any():
+        return np.zeros_like(a)
+    ys = np.nonzero(b)[0]
+    below = np.zeros_like(a)
+    below[int(ys.mean()):] = True
+    return excess & ctx.before.old_bg_mask & below
+
+
 class SilhouetteCritic(Critic):
+    """IoU of aligned before/after subject masks, not penalising parts revealed from behind the old scene."""
+
     name, branch = "silhouette", "keep"
 
     def evaluate(self, ctx: CriticContext) -> CriticResult:
         if not ctx.before.subject_mask.any() or not ctx.after.subject_mask.any():
             return self.not_applicable("missing subject mask")
-        iou = mask_iou(ctx.regions.aligned_before_subject, ctx.after.subject_mask)
-        issues = [IssueType.SUBJECT_DRIFT] if iou < self.p("issue_below", 0.75) else []
-        return self.result(iou, issues, iou=iou, transform=ctx.regions.transform)
+        b, a = ctx.regions.aligned_before_subject, ctx.after.subject_mask
+        allowed = revealed_allowed(ctx)
+        inter = (a & b).sum()
+        union = (b | (a & ~allowed)).sum()
+        score = float(inter / union) if union else 0.0
+        issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.75) else []
+        return self.result(score, issues, iou=score, raw_iou=mask_iou(b, a), revealed_px=int(allowed.sum()),
+                           transform=ctx.regions.transform)
 
 
 class AppearanceCritic(Critic):
@@ -45,8 +69,8 @@ class AppearanceCritic(Critic):
         diff = np.abs(lab_a_norm - lab_b)[region]
         d = float((diff * np.array([0.5, 1.0, 1.0])).sum(-1).mean())
         raw = float(np.abs(lab_a - lab_b)[region].sum(-1).mean())
-        score = float(np.exp(-d / self.p("sigma", 12.0)))
-        issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.6) else []
+        score = float(np.exp(-d / self.p("sigma", 20.0)))
+        issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
         return self.result(score, issues, normalized_dist=d, raw_dist=raw)
 
 

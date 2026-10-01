@@ -14,7 +14,11 @@ def build_editor(name: str, cfg: dict, registry) -> Editor:
         from src.editors.compositing import CompositingEditor
 
         return CompositingEditor(cfg, registry)
-    raise ValueError(f"Unknown editor '{name}' (ip2p | compositing)")
+    if name == "qwen_edit":
+        from src.editors.qwen_edit import QwenImageEditor
+
+        return QwenImageEditor(cfg, registry)
+    raise ValueError(f"Unknown editor '{name}' (ip2p | compositing | qwen_edit)")
 
 
 __all__ = ["Editor", "ParamRange", "build_editor"]

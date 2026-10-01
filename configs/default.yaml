@@ -30,6 +30,8 @@ models:
   depth:          {id: depth-anything/Depth-Anything-V2-Small-hf, dtype: float32}
   ip2p:           {id: timbrooks/instruct-pix2pix,       dtype: float16}   # ~2.2 GB on GPU
   sdxl_inpaint:   {id: diffusers/stable-diffusion-xl-1.0-inpainting-0.1, dtype: float16, cpu_offload: true}
+  vlm:            {id: Qwen/Qwen2.5-VL-7B-Instruct,      dtype: bfloat16}   # ~16 GB: CHTC only
+  qwen_edit:      {id: Qwen/Qwen-Image-Edit,             dtype: bfloat16}   # ~58 GB: needs an 80 GB GPU
 
 perception:
   subject_box_threshold: 0.35
@@ -39,16 +41,18 @@ perception:
   old_bg_box_threshold: 0.30
   use_depth: true
   detector_size: {shortest_edge: 512, longest_edge: 800}   # GDINO default (800/1333) upsamples and costs ~2x memory
+  use_vlm: false                # VLM region QA (needs models.vlm; enabled in configs/chtc.yaml)
 
 critics:
+  # contact_shadow (luminance heuristic) is kept for ablations only: AUROC 0.36 on the violation suite.
   enabled: [subject_count, identity, bg_changed,
             silhouette, appearance, texture,
             bg_semantic, old_bg_residue,
-            support, contact_shadow, light_harmony, halo]
+            support, light_harmony, halo]
   identity:      {catastrophic_below: 0.45, lo: 0.45, hi: 0.85}
-  bg_changed:    {catastrophic_below: 0.15, lo: 0.15, hi: 0.45}
+  bg_changed:    {catastrophic_below: 0.22, lo: 0.22, hi: 0.5}   # gate AND graded follow-branch score
   silhouette:    {issue_below: 0.75}
-  appearance:    {sigma: 12.0, issue_below: 0.6}
+  appearance:    {sigma: 20.0, issue_below: 0.4}
   texture:       {lo: 0.4, hi: 0.85, issue_below: 0.6}
   bg_semantic:   {issue_below: 0.5}
   old_bg_residue: {issue_above: 0.3}
@@ -56,6 +60,12 @@ critics:
   contact_shadow: {issue_below: 0.4}
   light_harmony: {sigma: 18.0, issue_below: 0.5}
   halo:          {issue_below: 0.5}
+  vlm_support:     {floor: 0.5, issue_below: 0.5}
+  vlm_shadow:      {floor: 0.5, issue_below: 0.5}
+  vlm_surface:     {floor: 0.5, issue_below: 0.5}
+  vlm_integration: {floor: 0.5, issue_below: 0.5}
+  vlm_lighting:    {floor: 0.5, issue_below: 0.5}
+  vlm_background:  {issue_below: 0.5}
 
 aggregation:
   method: gated_geometric      # gated_geometric | weighted_sum  (weighted_sum = legacy baseline)
@@ -70,9 +80,19 @@ aggregation:
     contact_shadow: 0.5
     light_harmony: 0.7
     halo: 0.8
+    bg_changed: 1.0
+    vlm_support: 1.0
+    vlm_shadow: 0.7
+    vlm_surface: 1.0
+    vlm_integration: 1.0
+    vlm_lighting: 0.7
+    vlm_background: 1.0
   branch_weights: {keep: 1.0, follow: 1.0, world: 1.0}
 
 editors:
+  qwen_edit:
+    num_inference_steps: 40
+    true_cfg_scale: 4.0
   ip2p:
     num_inference_steps: 30
     guidance_scale: 7.5
@@ -89,5 +109,6 @@ loop:
   max_edits: 8                 # budget = number of editor calls per task
   n_candidates: 2              # seeds per round (best-of-N)
   threshold: 0.75
+  full_budget: false            # true: ignore the threshold and always spend the budget (fair loop comparisons)
   patience: 2                  # rounds without improvement before stopping
   memory: true                 # cross-sample action statistics (runs/<run>/memory.json)

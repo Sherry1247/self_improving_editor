@@ -11,13 +11,13 @@ from __future__ import annotations
 import numpy as np
 
 from src.types import Regions
-from src.utils.geometry import dilate, erode, mask_box, similarity_align
+from src.utils.geometry import choose_alignment, dilate, erode, mask_box
 
 
 def partition(mask_after: np.ndarray, mask_before: np.ndarray, band_frac: float = 0.03,
               contact_h_frac: float = 0.15, contact_w_pad: float = 0.2, foot_frac: float = 0.12) -> Regions:
     h, w = mask_after.shape
-    aligned, tf = similarity_align(mask_before, mask_after) if mask_before.any() else (mask_before.copy(), {})
+    aligned, tf = choose_alignment(mask_before, mask_after) if mask_before.any() else (mask_before.copy(), {})
     box = mask_box(mask_after)
     if box is None:
         empty = np.zeros((h, w), bool)

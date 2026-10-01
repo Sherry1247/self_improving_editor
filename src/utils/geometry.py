@@ -79,6 +79,40 @@ def similarity_align(src: np.ndarray, dst: np.ndarray) -> tuple[np.ndarray, dict
     return warped, {"dx": md[0] - ms[0], "dy": md[1] - ms[1], "scale": float(s)}
 
 
+def coverage(src_warped: np.ndarray, dst: np.ndarray) -> float:
+    """Fraction of the (warped) before-subject that is still covered by the after-subject."""
+    n = src_warped.sum()
+    return float((src_warped & dst).sum() / n) if n else 0.0
+
+
+IDENTITY = {"dx": 0.0, "dy": 0.0, "scale": 1.0}
+
+
+def choose_alignment(src: np.ndarray, dst: np.ndarray, min_gain: float = 0.02) -> tuple[np.ndarray, dict[str, float]]:
+    """Identity unless a moment-based similarity transform covers the before-subject clearly better.
+
+    Moment alignment alone is biased whenever the after-mask legitimately GROWS (legs that were under
+    water are regenerated, a tail becomes visible): the centroid moves and the scale inflates, which
+    misaligns pixel-exact pastes by several pixels. Coverage of the before-mask is insensitive to growth.
+    """
+    if not src.any() or not dst.any():
+        return src.copy(), dict(IDENTITY)
+    warped, tf = similarity_align(src, dst)
+    if coverage(warped, dst) > coverage(src, dst) + min_gain:
+        return warped, tf
+    return src.copy(), dict(IDENTITY)
+
+
+def fill_holes(mask: np.ndarray) -> np.ndarray:
+    """Fill interior holes of a binary mask (SAM masks often have pin-holes on textured clothing)."""
+    m = mask.astype(np.uint8)
+    h, w = m.shape
+    flood = np.pad(m, 1, constant_values=0).copy()
+    cv2.floodFill(flood, None, (0, 0), 1)
+    holes = flood[1:-1, 1:-1] == 0
+    return mask.astype(bool) | holes
+
+
 def warp_image(img: np.ndarray, transform: dict[str, float], src_mask: np.ndarray, out_hw: tuple[int, int]) -> np.ndarray:
     """Apply the same similarity transform used by :func:`similarity_align` to an image."""
     ms = mask_moments(src_mask)

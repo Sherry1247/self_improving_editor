@@ -1,9 +1,20 @@
-# Overrides for CHTC GPUs (>= 24 GB). Merged on top of default.yaml.
+# Overrides for CHTC GPUs (>= 40 GB). Merged on top of default.yaml.
 memory_policy: keep
 image:
   long_side: 1024
 models:
   sdxl_inpaint: {cpu_offload: false}
+perception:
+  use_vlm: true
+critics:
+  enabled: [subject_count, identity, bg_changed,
+            silhouette, appearance, texture,
+            bg_semantic, old_bg_residue, vlm_background,
+            support, light_harmony, halo,
+            vlm_support, vlm_shadow, vlm_surface, vlm_integration, vlm_lighting]
 loop:
   n_candidates: 4
   max_edits: 12
+  threshold: 0.9
+  full_budget: true             # compare editors / loops at the same number of editor calls
+  patience: 99

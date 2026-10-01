@@ -51,3 +51,17 @@ Config: `configs/chtc.yaml` (1024 px, 4 seeds/round, budget 12 edits, threshold 
    inpainting hallucinating a tent-like object hugging the subject outline (comp, halo only 0.88).
 5. Threshold 0.75 is below comp's round-0 median, so the loop never iterates for comp.
    → compare loops at equal full budget, or raise the threshold.
+
+## 4. Fixes applied (2026-10-01, commit after this doc)
+
+| problem | fix |
+|---|---|
+| E1 confound | positive = `null` variant through the same cut/inpaint/paste pipeline; SAM mask holes filled |
+| alignment bias when the mask grows | `choose_alignment`: identity unless a moment transform covers the before-mask ≥ 2 pts better |
+| revealed parts counted as drift | silhouette ignores after-pixels that were old-background (water) below the subject's centre |
+| appearance too strict | sigma 12 → 20, issue threshold 0.6 → 0.4 (re-check after re-scoring) |
+| background change not scored | `bg_changed` moved to the follow branch (graded) and still gates; gate 0.15 → 0.22 |
+| contact_shadow blind | disabled in the loop (kept for ablation); VLM region QA added: support, shadow, surface, integration, lighting, background (Qwen2.5-VL-7B, P(yes), relative to the real photo) |
+| loop never iterates for comp | `loop.full_budget` (CHTC: on, patience 99) so every method spends the same 12 edits |
+| only bests saved | `experiments/rescore.py` + `MODE=rescore` re-score finished runs with the current critics |
+| weak editor | `qwen_edit` (Qwen-Image-Edit, Apache-2.0) as the strong instruction editor (80 GB GPU) |

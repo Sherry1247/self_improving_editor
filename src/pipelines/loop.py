@@ -60,6 +60,7 @@ class RefinementLoop:
         self.n = int(lcfg.get("n_candidates", 2))
         self.threshold = float(lcfg.get("threshold", 0.75))
         self.patience = int(lcfg.get("patience", 2))
+        self.full_budget = bool(lcfg.get("full_budget", False))
         self.seed = int(cfg.get("seed", 42))
         self.eps = 1e-3
 
@@ -102,7 +103,7 @@ class RefinementLoop:
                 best, stale = rb, 0
             else:
                 stale += 1
-            if best.score >= self.threshold:
+            if best.score >= self.threshold and not self.full_budget:
                 reason = "threshold"
                 break
             if stale >= self.patience:

@@ -46,6 +46,7 @@ ISSUE_ACTIONS: dict[IssueType, list[Action]] = {
     IssueType.MISSING_SHADOW: [Action("clause_contact", "clause", "contact")],
     IssueType.LIGHT_MISMATCH: [Action("clause_light", "clause", "light")],
     IssueType.HALO: [Action("clause_edges", "clause", "edges"), Action("edit_more", "edit_more")],
+    IssueType.IMPLAUSIBLE: [Action("clause_natural", "clause", "natural"), Action("reseed", "reseed")],
 }
 GATE_ISSUES = {IssueType.SUBJECT_MISSING, IssueType.EXTRA_SUBJECT, IssueType.IDENTITY_LOSS, IssueType.BG_UNCHANGED}
 BRANCH_FALLBACK = {"keep": IssueType.SUBJECT_DRIFT, "follow": IssueType.BG_WRONG, "world": IssueType.MISSING_SHADOW}

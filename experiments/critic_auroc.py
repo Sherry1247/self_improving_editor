@@ -1,6 +1,8 @@
 """E1: do the critics detect controlled physical violations?
 
-For each sample: positive = the real photo, negatives = one violation each (validation/violations.py).
+For each sample: positive = "null" (cut out + pasted back in place, same pipeline as every negative),
+negatives = one violation each (validation/violations.py). Halo is compared against a clean paste on the
+same foreign background. The untouched photo ("real") is kept only as a reference row.
 Reports per-critic AUROC for every violation type and saves example images.
 
     python experiments/critic_auroc.py --name e1
@@ -29,6 +31,10 @@ def main():
     if args.samples:
         samples = [s for s in samples if s.sample_id in args.samples]
     run = new_run_dir(cfg, args.name)
+    # evaluate every critic, including ablation-only ones that are disabled in the loop
+    for extra in ("contact_shadow",):
+        if extra not in cfg["critics"]["enabled"]:
+            cfg["critics"]["enabled"].append(extra)
     _, perceiver, evaluator = build_evaluation_stack(cfg)
 
     imgs = {s.sample_id: prepare_image(Path(cfg["paths"]["images"]) / s.filename, cfg["paths"]["cache"],
@@ -54,12 +60,12 @@ def main():
                     scores[name][kind].append(c.score)
         print(f"[{k + 1}/{len(samples)}] {s.sample_id}: {len(variants)} variants")
 
-    kinds = sorted({k for d in scores.values() for k in d if k not in ("real", "foreign_clean")})
+    kinds = sorted({k for d in scores.values() for k in d if k not in ("real", "null", "foreign_clean")})
     table = []
     for name, d in scores.items():
         row = {"critic": name}
         for kind in kinds:
-            ref = d.get("foreign_clean") if kind == "halo" else d.get("real")
+            ref = d.get("foreign_clean") if kind == "halo" else d.get("null")
             a = auroc(ref or [], d.get(kind, []))
             row[kind] = None if a is None else round(a, 3)
         table.append(row)
@@ -68,7 +74,7 @@ def main():
         w.writeheader()
         w.writerows(table)
     write_json({k: {kk: vv for kk, vv in v.items()} for k, v in scores.items()}, run / "raw_scores.json")
-    print("\nAUROC (1.0 = critic always scores the real photo higher than the violation; 0.5 = blind)")
+    print("\nAUROC (1.0 = critic always scores the null paste higher than the violation; 0.5 = blind)")
     print("critic".ljust(16) + "".join(k[:10].rjust(11) for k in kinds))
     for row in table:
         print(row["critic"].ljust(16) + "".join(("-" if row[k] is None else f"{row[k]:.2f}").rjust(11) for k in kinds))

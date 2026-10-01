@@ -35,6 +35,7 @@ class IssueType(str, Enum):
     MISSING_SHADOW = "missing_shadow"
     LIGHT_MISMATCH = "light_mismatch"
     HALO = "halo"
+    IMPLAUSIBLE = "implausible"  # semantic / physical oddity found by the VLM (melted objects, outline artefacts)
 
 
 @dataclass
@@ -57,6 +58,7 @@ class Perception:
     subject_embedding: np.ndarray | None = None  # DINOv2 CLS of masked subject crop
     patch_features: np.ndarray | None = None  # DINOv2 patch grid (gh, gw, C), L2-normalised
     bg_probs: dict[str, float] | None = None  # SigLIP probs over candidate backgrounds (subject removed)
+    vlm: dict[str, float] | None = None  # VLM region-QA P(yes) per question key (see perception/vlm.py)
     mock: bool = False
 
     @property

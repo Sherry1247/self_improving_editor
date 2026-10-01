@@ -55,6 +55,28 @@ def load_depth(mcfg: dict, dtype, device: str) -> ModelBundle:
     return ModelBundle("depth", mcfg["id"], model, proc)
 
 
+def load_vlm(mcfg: dict, dtype, device: str) -> ModelBundle:
+    from transformers import AutoModelForImageTextToText, AutoProcessor
+
+    proc = AutoProcessor.from_pretrained(mcfg["id"])
+    model = AutoModelForImageTextToText.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
+    return ModelBundle("vlm", mcfg["id"], model, proc)
+
+
+def load_qwen_edit(mcfg: dict, dtype, device: str) -> ModelBundle:
+    from diffusers import QwenImageEditPipeline
+
+    pipe = QwenImageEditPipeline.from_pretrained(mcfg["id"], torch_dtype=dtype)
+    pipe.set_progress_bar_config(disable=True)
+    offload = bool(mcfg.get("cpu_offload", False)) and device == "cuda"
+    if offload:
+        pipe.enable_model_cpu_offload()
+    bundle = ModelBundle("qwen_edit", mcfg["id"], pipe, self_offloading=offload)
+    if not offload:
+        bundle.to(device)
+    return bundle
+
+
 def load_ip2p(mcfg: dict, dtype, device: str) -> ModelBundle:
     from diffusers import EulerAncestralDiscreteScheduler, StableDiffusionInstructPix2PixPipeline
 
@@ -89,4 +111,6 @@ LOADERS = {
     "depth": load_depth,
     "ip2p": load_ip2p,
     "sdxl_inpaint": load_sdxl_inpaint,
+    "vlm": load_vlm,
+    "qwen_edit": load_qwen_edit,
 }

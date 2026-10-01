@@ -1,8 +1,10 @@
 """Controlled physical-violation suite (innovation C).
 
-Real photos are physically valid -> they are the positives. Each negative applies exactly ONE
-controlled violation to the same photo, so a critic that separates them is measuring that violation
-and nothing else. Used to (1) test whether critics see physics errors, (2) set reliability weights.
+Real photos are physically valid. Every variant -- the positive included -- goes through the SAME
+pipeline (subject cut out, background plate inpainted, subject pasted back); the positive ("null") pastes
+the subject back exactly where it was, each negative changes exactly ONE thing. A critic that separates
+null from a negative is therefore measuring that violation, not the inpainting / pasting artefacts.
+(The first E1 run compared against the untouched photo, which let any artefact detector look perfect.)
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ import cv2
 import numpy as np
 
 from src.utils.color import to_lab
-from src.utils.geometry import dilate, mask_box
+from src.utils.geometry import dilate, fill_holes, mask_box
 
 
 @dataclass
@@ -62,6 +64,7 @@ def contact_band(mask: np.ndarray, h_frac: float = 0.12) -> np.ndarray:
 
 
 def make_violations(img: np.ndarray, mask: np.ndarray, foreign_plate: np.ndarray | None = None) -> list[Violation]:
+    mask = fill_holes(mask)  # pin-holes would let the inpainted plate show through the subject
     box = mask_box(mask)
     sh = box[3] - box[1]
     plate = clean_plate(img, mask)
@@ -71,6 +74,7 @@ def make_violations(img: np.ndarray, mask: np.ndarray, foreign_plate: np.ndarray
     def add(kind, res, **params):
         out.append(Violation(kind, res[0], res[1], params))
 
+    add("null", paste(plate, img, mask))  # positive: same pipeline, no violation
     add("float", paste(plate, img, mask, dy=-int(0.10 * sh)), dy=-0.10)
     add("sink", paste(plate, img, mask, dy=int(0.06 * sh)), dy=0.06)
     add("scale_up", paste(plate, img, mask, scale=1.35), scale=1.35)
@@ -82,7 +86,7 @@ def make_violations(img: np.ndarray, mask: np.ndarray, foreign_plate: np.ndarray
     lab[..., 2] += 25.0  # strong yellow cast
     cast = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
     cast = (np.clip(cast, 0, 1) * 255).astype(np.uint8)
-    add("color_cast", paste(img, cast, mask), db=25)
+    add("color_cast", paste(plate, cast, mask), db=25)
 
     # halo: paste with a dilated mask (carries old-background pixels) onto a foreign background
     if foreign_plate is not None:

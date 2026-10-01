@@ -44,9 +44,13 @@ class IdentityCritic(Critic):
 
 
 class BackgroundChangedCritic(Critic):
-    """1 - mean DINOv2 patch cosine over the far-background cells: did the background really change?"""
+    """1 - mean DINOv2 patch cosine over the far-background cells: did the background really change?
 
-    name, branch = "bg_changed", "gate"
+    Acts as a gate (catastrophic below the threshold) AND contributes its graded score to the follow
+    branch, so a restyled-but-not-replaced background cannot score as well as a real replacement.
+    """
+
+    name, branch = "bg_changed", "follow"
 
     def evaluate(self, ctx: CriticContext) -> CriticResult:
         pb, pa = ctx.before.patch_features, ctx.after.patch_features
@@ -56,8 +60,8 @@ class BackgroundChangedCritic(Critic):
         if cells.sum() < 4:
             return self.not_applicable("background region too small")
         change = float(1.0 - (pb[cells] * pa[cells]).sum(-1).mean())
-        cat = change < self.p("catastrophic_below", 0.15)
-        return self.result(ramp(change, self.p("lo", 0.15), self.p("hi", 0.45)),
+        cat = change < self.p("catastrophic_below", 0.22)
+        return self.result(ramp(change, self.p("lo", 0.22), self.p("hi", 0.5)),
                            [IssueType.BG_UNCHANGED] if cat else [], cat, change=change, cells=int(cells.sum()))
 
 
