@@ -83,7 +83,9 @@ class Perceiver:
     def detect(self, image: np.ndarray, query: str, box_thr: float, text_thr: float) -> list[Detection]:
         with self.reg.use("grounding_dino") as b:
             dev = next(b.model.parameters()).device
-            inputs = b.processor(images=Image.fromarray(image), text=query.lower(), return_tensors="pt").to(dev)
+            size = self.pcfg.get("detector_size", {"shortest_edge": 512, "longest_edge": 800})
+            inputs = b.processor(images=Image.fromarray(image), text=query.lower(), size=size,
+                                 return_tensors="pt").to(dev)
             out = b.model(**inputs)
             res = b.processor.post_process_grounded_object_detection(
                 out, inputs.input_ids, threshold=box_thr, text_threshold=text_thr,

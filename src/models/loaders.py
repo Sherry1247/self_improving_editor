@@ -10,11 +10,16 @@ from __future__ import annotations
 from src.models.registry import ModelBundle
 
 
+def _direct(device: str) -> dict:
+    """Materialise weights straight on the GPU (no full host-RAM copy) when loading for CUDA."""
+    return {"device_map": device} if device.startswith("cuda") else {}
+
+
 def load_grounding_dino(mcfg: dict, dtype, device: str) -> ModelBundle:
     from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
     proc = AutoProcessor.from_pretrained(mcfg["id"])
-    model = AutoModelForZeroShotObjectDetection.from_pretrained(mcfg["id"], dtype=dtype).eval()
+    model = AutoModelForZeroShotObjectDetection.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
     return ModelBundle("grounding_dino", mcfg["id"], model, proc)
 
 
@@ -22,7 +27,7 @@ def load_sam2(mcfg: dict, dtype, device: str) -> ModelBundle:
     from transformers import Sam2Model, Sam2Processor
 
     proc = Sam2Processor.from_pretrained(mcfg["id"])
-    model = Sam2Model.from_pretrained(mcfg["id"], dtype=dtype).eval()
+    model = Sam2Model.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
     return ModelBundle("sam2", mcfg["id"], model, proc)
 
 
@@ -30,7 +35,7 @@ def load_dinov2(mcfg: dict, dtype, device: str) -> ModelBundle:
     from transformers import AutoImageProcessor, AutoModel
 
     proc = AutoImageProcessor.from_pretrained(mcfg["id"])
-    model = AutoModel.from_pretrained(mcfg["id"], dtype=dtype).eval()
+    model = AutoModel.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
     return ModelBundle("dinov2", mcfg["id"], model, proc)
 
 
@@ -38,7 +43,7 @@ def load_siglip(mcfg: dict, dtype, device: str) -> ModelBundle:
     from transformers import AutoModel, AutoProcessor
 
     proc = AutoProcessor.from_pretrained(mcfg["id"])
-    model = AutoModel.from_pretrained(mcfg["id"], dtype=dtype).eval()
+    model = AutoModel.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
     return ModelBundle("siglip", mcfg["id"], model, proc)
 
 
@@ -46,7 +51,7 @@ def load_depth(mcfg: dict, dtype, device: str) -> ModelBundle:
     from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 
     proc = AutoImageProcessor.from_pretrained(mcfg["id"])
-    model = AutoModelForDepthEstimation.from_pretrained(mcfg["id"], dtype=dtype).eval()
+    model = AutoModelForDepthEstimation.from_pretrained(mcfg["id"], dtype=dtype, **_direct(device)).eval()
     return ModelBundle("depth", mcfg["id"], model, proc)
 
 
@@ -57,7 +62,9 @@ def load_ip2p(mcfg: dict, dtype, device: str) -> ModelBundle:
                                                                   requires_safety_checker=False)
     pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
     pipe.set_progress_bar_config(disable=True)
-    return ModelBundle("ip2p", mcfg["id"], pipe)
+    bundle = ModelBundle("ip2p", mcfg["id"], pipe)
+    bundle.to(device)
+    return bundle
 
 
 def load_sdxl_inpaint(mcfg: dict, dtype, device: str) -> ModelBundle:

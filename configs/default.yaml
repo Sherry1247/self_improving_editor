@@ -3,7 +3,11 @@
 
 device: auto            # auto | cuda | cpu
 seed: 42
-memory_policy: swap     # swap: only the model in use sits on the GPU (8 GB safe); keep: everything stays on GPU
+# keep:   load straight to GPU and stay there (no host-RAM copies)      <- default
+# swap:   park on CPU, move to GPU only while used (less VRAM, needs lots of RAM / page file)
+# unload: delete after every use (least memory, slowest)
+# per-model override: models.<kind>.policy
+memory_policy: keep
 
 paths:
   labels: data/labels.csv
@@ -24,7 +28,7 @@ models:
   dinov2:         {id: facebook/dinov2-base,             dtype: float16}
   siglip:         {id: google/siglip-so400m-patch14-384, dtype: float16}
   depth:          {id: depth-anything/Depth-Anything-V2-Small-hf, dtype: float32}
-  ip2p:           {id: timbrooks/instruct-pix2pix,       dtype: float16}
+  ip2p:           {id: timbrooks/instruct-pix2pix,       dtype: float16}   # ~2.2 GB on GPU
   sdxl_inpaint:   {id: diffusers/stable-diffusion-xl-1.0-inpainting-0.1, dtype: float16, cpu_offload: true}
 
 perception:
@@ -34,6 +38,7 @@ perception:
   subject_min_area_frac: 0.005  # ignore tiny detections (< 0.5 % of the image)
   old_bg_box_threshold: 0.30
   use_depth: true
+  detector_size: {shortest_edge: 512, longest_edge: 800}   # GDINO default (800/1333) upsamples and costs ~2x memory
 
 critics:
   enabled: [subject_count, identity, bg_changed,

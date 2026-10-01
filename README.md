@@ -49,6 +49,9 @@ python experiments/download_models.py                 # ~13 GB into the Hugging 
 ## Run
 
 ```bash
+# 0. if anything runs out of memory: per-model GPU/RAM usage report
+python experiments/check_env.py
+
 # 1. downscale originals + cache before-perception; check runs/prepare/*_regions.jpg
 python experiments/prepare_data.py
 
@@ -78,7 +81,7 @@ On CHTC: `condor_submit chtc/submit.sub` (one GPU job per sample, `configs/chtc.
 configs/        default.yaml (8 GB laptop), chtc.yaml (overrides)
 src/spec/       EditSpec: subject, source/target background, invariants & covariants
 src/data/       labels.csv -> tasks, image loading (EXIF, aspect-preserving resize, cache)
-src/models/     ModelRegistry (load once, swap GPU<->CPU for 8 GB), loaders
+src/models/     ModelRegistry (load once; per-model GPU policy keep / swap / unload), loaders
 src/perception/ Grounding DINO, SAM 2, DINOv2, SigLIP, Depth Anything V2 -> Perception
 src/regions/    S / B / C / G partition from masks
 src/critics/    gate.py keep.py follow.py world.py
