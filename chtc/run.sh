@@ -15,7 +15,11 @@ cd "$SCRATCH"
 echo "[job] mode=$MODE run=$RUN sample=$SAMPLE editor=$EDITOR host=$(hostname) $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv || true
 
-mkdir -p repo && tar xzf payload.tar.gz -C repo && cd repo
+TAG="${RUN}_${SAMPLE}"
+mkdir -p repo/runs
+# always ship something back, even on failure, so HTCondor does not hold the job
+trap 'cd "$SCRATCH/repo" 2>/dev/null && tar czf "$SCRATCH/result_${TAG}.tar.gz" runs || tar czf "$SCRATCH/result_${TAG}.tar.gz" -T /dev/null' EXIT
+tar xzf payload.tar.gz -C repo && cd repo
 export HF_HOME="$SCRATCH/hf" PIP_CACHE_DIR="$SCRATCH/pipcache" HOME="$SCRATCH"
 
 # venv on top of the container's torch (do not reinstall torch)
@@ -37,7 +41,4 @@ case "$MODE" in
   *) echo "unknown mode $MODE"; exit 2 ;;
 esac
 
-# ship results back (HTCondor transfers this file to the submit directory)
-TAG="${RUN}_${SAMPLE}"
-tar czf "$SCRATCH/result_${TAG}.tar.gz" runs
-echo "[job] done $(date)"
+echo "[job] done $(date)"   # the EXIT trap packs runs/ into result_<RUN>_<sample>.tar.gz
