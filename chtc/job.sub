@@ -1,0 +1,38 @@
+# Generic CHTC GPU job. Pick what to run with command-line assignments, e.g.
+#   condor_submit chtc/job.sub MODE=check  RUN=check1 LIST=jobs/one.txt
+#   condor_submit chtc/job.sub MODE=loop   RUN=smoke  LIST=jobs/smoke.txt  EXTRA="--targets snow --save-candidates"
+#   condor_submit chtc/job.sub MODE=loop   RUN=ip2p   LIST=jobs/samples.txt
+#   condor_submit chtc/job.sub MODE=loop   RUN=comp   LIST=jobs/samples.txt EDITOR=compositing
+#   condor_submit chtc/job.sub MODE=auroc  RUN=e1     LIST=jobs/one.txt
+# One job per line of LIST (a sample id). Results come back as results/result_<RUN>_<sample>.tar.gz
+MODE   = loop
+RUN    = smoke
+LIST   = jobs/smoke.txt
+EDITOR = ip2p
+EXTRA  =
+
+universe                = container
+container_image         = docker://pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
+executable              = chtc/run.sh
+arguments               = $(MODE) $(RUN) $(sample) $(EXTRA)
+environment             = "EDITOR=$(EDITOR)"
+
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+transfer_input_files    = chtc/payload.tar.gz
+transfer_output_files   = result_$(RUN)_$(sample).tar.gz
+transfer_output_remaps  = "result_$(RUN)_$(sample).tar.gz = results/result_$(RUN)_$(sample).tar.gz"
+
+request_gpus            = 1
+gpus_minimum_memory     = 20000
++WantGPULab             = true
++GPUJobLength           = "short"
+request_cpus            = 4
+request_memory          = 32GB
+request_disk            = 50GB
+
+log    = chtc/logs/$(RUN).log
+output = chtc/logs/$(RUN)_$(sample).out
+error  = chtc/logs/$(RUN)_$(sample).err
+
+queue sample from $(LIST)

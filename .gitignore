@@ -27,3 +27,7 @@ chtc/logs/*
 Thumbs.db
 .idea/
 .vscode/
+
+# CHTC
+chtc/payload.tar.gz
+results/

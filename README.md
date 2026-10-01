@@ -73,7 +73,25 @@ python experiments/evaluate_pair.py --before a.jpg --after b.jpg --object dog --
 Every task writes `runs/<name>/<task>/{before.png, best.png, panel_best.jpg, report.json}`;
 `runs/<name>/summary.csv` has one row per task. Any config key can be overridden with `--set a.b=value`.
 
-On CHTC: `condor_submit chtc/submit.sub` (one GPU job per sample, `configs/chtc.yaml` overrides).
+## Running on CHTC
+
+On the submit server (`ssh <netid>@ap2001.chtc.wisc.edu`):
+
+```bash
+git clone -b feat/bg-critic-mvp https://github.com/Sherry1247/self_improving_editor.git && cd self_improving_editor
+bash chtc/pack.sh                                                      # code + images -> chtc/payload.tar.gz
+condor_submit chtc/job.sub MODE=check RUN=check1 LIST=jobs/one.txt     # 1. GPU / memory sanity check
+condor_submit chtc/job.sub MODE=loop  RUN=smoke  LIST=jobs/smoke.txt EXTRA="--targets snow --save-candidates"
+condor_submit chtc/job.sub MODE=loop  RUN=ip2p   LIST=jobs/samples.txt # 15 jobs, 90 tasks
+condor_submit chtc/job.sub MODE=loop  RUN=comp   LIST=jobs/samples.txt EDITOR=compositing
+condor_submit chtc/job.sub MODE=auroc RUN=e1     LIST=jobs/one.txt     # critic AUROC on all samples
+condor_q                                                               # watch; logs in chtc/logs/
+bash chtc/collect.sh ip2p                                              # unpack results -> runs/ip2p/summary.csv
+```
+
+Each job pulls the container's PyTorch, pip-installs `requirements.txt` into a venv and downloads the
+models it needs from Hugging Face into its scratch dir (nothing is stored in your CHTC home).
+Re-run `chtc/pack.sh` after every `git pull`.
 
 ## Layout
 

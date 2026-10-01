@@ -1,18 +1,43 @@
 #!/bin/bash
-# HTCondor job: run the closed loop for ONE sample (all of its target backgrounds, sequentially,
-# so the cross-sample action memory accumulates inside the job).
-#   $1 = sample id (filename stem), $2 = run name, $3.. = extra args for run_loop.py
+# HTCondor execute script. Runs inside the job's scratch dir with payload.tar.gz transferred in.
+#   run.sh <mode> <run_name> <sample|-> [extra args for the python script...]
+# modes: check  -> experiments/check_env.py
+#        loop   -> experiments/run_loop.py --samples <sample>   (all targets of that sample)
+#        auroc  -> experiments/critic_auroc.py                  (all samples)
+# env:   EDITOR=ip2p|compositing (default ip2p), HF_TOKEN optional
 set -euo pipefail
 
-SAMPLE="$1"; RUN="$2"; shift 2
-cd "$(dirname "$0")/.."
+MODE="$1"; RUN="$2"; SAMPLE="$3"; shift 3
+EDITOR="${EDITOR:-ip2p}"
+SCRATCH="${_CONDOR_SCRATCH_DIR:-$PWD}"
+cd "$SCRATCH"
 
-export HF_HOME="${HF_HOME:-$PWD/.cache/huggingface}"
-export PIP_CACHE_DIR="$PWD/.cache/pip"
-python -m pip install --quiet --user -r requirements.txt
+echo "[job] mode=$MODE run=$RUN sample=$SAMPLE editor=$EDITOR host=$(hostname) $(date)"
+nvidia-smi --query-gpu=name,memory.total --format=csv || true
 
-nvidia-smi || true
-python experiments/run_loop.py --config configs/chtc.yaml --name "$RUN" --samples "$SAMPLE" "$@"
+mkdir -p repo && tar xzf payload.tar.gz -C repo && cd repo
+export HF_HOME="$SCRATCH/hf" PIP_CACHE_DIR="$SCRATCH/pipcache" HOME="$SCRATCH"
 
-# ship results back as one tarball (HTCondor transfers it to the submit dir)
-tar czf "result_${RUN}_${SAMPLE}.tar.gz" "runs/${RUN}"
+# venv on top of the container's torch (do not reinstall torch)
+python -m venv --system-site-packages "$SCRATCH/env"
+"$SCRATCH/env/bin/pip" install --quiet -r requirements.txt
+PY="$SCRATCH/env/bin/python"
+"$PY" -c "import torch; print('[job] torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+
+MODELS="grounding_dino sam2 dinov2 siglip depth"
+[ "$EDITOR" = "compositing" ] && MODELS="$MODELS sdxl_inpaint" || MODELS="$MODELS ip2p"
+[ "$MODE" = "auroc" ] && MODELS="grounding_dino sam2 dinov2 siglip depth"
+"$PY" experiments/download_models.py --only $MODELS
+
+OVR=(--config configs/chtc.yaml --set "loop.editor=$EDITOR")
+case "$MODE" in
+  check) "$PY" experiments/check_env.py "${OVR[@]}" "$@" | tee "check_${RUN}.txt"; mkdir -p runs/$RUN; cp "check_${RUN}.txt" runs/$RUN/ ;;
+  loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
+  auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
+  *) echo "unknown mode $MODE"; exit 2 ;;
+esac
+
+# ship results back (HTCondor transfers this file to the submit directory)
+TAG="${RUN}_${SAMPLE}"
+tar czf "$SCRATCH/result_${TAG}.tar.gz" runs
+echo "[job] done $(date)"

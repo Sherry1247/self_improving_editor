@@ -8,7 +8,7 @@ accelerate>=1.10
 huggingface_hub>=1.0
 safetensors
 numpy>=2.0
-opencv-python>=4.10
+opencv-python-headless>=4.10   # headless: no libGL needed in CHTC containers
 pillow>=11
 pyyaml>=6
 psutil>=5.9
