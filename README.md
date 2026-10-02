@@ -113,7 +113,7 @@ needs ~80 GB), about 13 GB of disk for model weights.
 git clone https://github.com/Sherry1247/self_improving_editor.git
 cd self_improving_editor
 python -m venv .venv
-.venvScriptsctivate                 # Linux / macOS: source .venv/bin/activate
+.venv\Scripts\activate                  # Linux / macOS: source .venv/bin/activate
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # RTX 50xx needs cu128+
 pip install -r requirements.txt
 python experiments/download_models.py   # ~13 GB into the Hugging Face cache
