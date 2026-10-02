@@ -1,7 +1,14 @@
 # Self-Improving Background Editor
 
-Closed-loop **background replacement** that keeps the subject (person / dog) unchanged **and** keeps it
-physically coupled to the new scene (support, contact shadow, lighting, clean edges).
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-CUDA-ee4c2c.svg)](https://pytorch.org/)
+[![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen.svg)](tests/)
+
+A closed-loop **background replacement** system. It swaps the scene behind a person or dog so that the
+subject stays unchanged **and** stays physically coupled to the new scene: support, contact shadow, lighting
+and clean edges. Instead of trusting one editor in one shot, it scores every candidate with a bank of
+critics, diagnoses what is wrong, and re-edits.
 
 ```
 before ─► EditSpec ─► perception (cached) ─┐
@@ -12,9 +19,68 @@ before ─► EditSpec ─► perception (cached) ─┐
                       ▲ cross-sample action memory (UCB on Δscore)
 ```
 
-Design docs: [`docs/specs/2026-09-30-pipeline-technical-design.md`](docs/specs/2026-09-30-pipeline-technical-design.md)
-(pipeline) and [`docs/specs/2026-09-30-bg-replacement-critic-novelty-and-plan.md`](docs/specs/2026-09-30-bg-replacement-critic-novelty-and-plan.md)
-(related work, contributions A–E, plan).
+## Contents
+
+[Results](#results) · [Critics](#critics) · [Installation](#installation) · [Usage](#usage) ·
+[Running on CHTC](#running-on-chtc) · [Project layout](#project-layout) · [Testing](#testing) ·
+[Documentation](#documentation) · [Contributing](#contributing) · [License](#license)
+
+## Results
+
+All numbers come from the 15-image dataset (adult / dog, sitting / standing, river / mountain) with 6 target
+backgrounds (snow, beach, city, forest, indoor, mountain), a budget of 12 edits per task, and critics v2.
+Details: [`docs/results/`](docs/results/).
+
+### Photo comparison of the three editors
+
+Each row is one task. Columns: the original photo, **InstructPix2Pix** (`ip2p`), the **compositing baseline**
+(SAM mask + SDXL inpainting, `comp`), and **Qwen-Image-Edit** (`qwen`). The number above each image is the
+final critic score (0–1; `0.00` means a gate fired, i.e. the edit was rejected).
+
+![Before / ip2p / compositing / Qwen-Image-Edit on six tasks](docs/img/editors_compare.jpg)
+
+What the pictures show:
+
+* **ip2p** rarely replaces the background. It restyles the whole image (cooler tint for "snow", green tint
+  for "forest", a floor plan of sofas for "indoor"), so the gate scores most of those as failures.
+* **comp** always replaces the background and keeps the subject pixel-exact, but the new scene can be
+  physically odd (objects hugging the subject outline, weak support under the feet).
+* **qwen** gives the most coherent scenes (real shadows, consistent perspective) while preserving the subject;
+  it needs an 80 GB GPU.
+
+### Quantitative comparison
+
+On the 6 tasks of `adult_sit_river_01` (one source photo, all six targets), same 12-edit budget:
+
+| editor | gate passed | median score | mean score | median score of round 0 |
+|---|---|---|---|---|
+| InstructPix2Pix | 5 / 6 | 0.73 | 0.61 | 0.00 |
+| Compositing (SAM + SDXL inpaint) | **6 / 6** | **0.89** | **0.90** | 0.81 |
+| Qwen-Image-Edit | **6 / 6** | 0.84 | 0.83 | 0.78 |
+
+Full 90-task runs (critics v1, then re-scored with critics v2):
+
+| | ip2p | comp |
+|---|---|---|
+| gate passed (v1 → v2 → semantic gate) | 79 → 63 → 55 / 90 | 90 → 90 / 90 |
+| median overall score (v1 → v2) | 0.672 → 0.669 | 0.913 → 0.949 (0.879 with world softmin) |
+| comp beats ip2p | | 90 / 90 |
+| tasks improved by the refinement loop | 62 / 90 (mean +0.35) | 4 / 90 (already above threshold) |
+
+### Do the critics detect physical violations? (E1)
+
+Per-critic AUROC on a controlled violation suite (a clean paste vs the same photo with one injected violation):
+
+| critic | float | sink | scale↑ | scale↓ | no shadow | colour cast | halo |
+|---|---|---|---|---|---|---|---|
+| `support` (depth) | **0.85** | 0.51 | 0.49 | 0.52 | 0.65 | 0.52 | 0.38 |
+| `light_harmony` | 0.47 | 0.46 | 0.52 | 0.55 | 0.53 | **1.00** | 0.44 |
+| `halo` | – | – | – | – | – | – | **0.97** |
+| `vlm_integration` | 0.72 | 0.48 | 0.53 | **0.88** | 0.49 | 0.72 | 0.82 |
+| `vlm_surface` | **0.79** | 0.47 | 0.67 | 0.65 | 0.71 | 0.67 | 0.60 |
+
+Heuristic critics are sharp but narrow, VLM critics are broad but weaker, so they are combined. Two honest
+negative results: **missing contact shadows** and **slight sinking** are not detected by any critic yet.
 
 ## Critics
 
@@ -38,17 +104,22 @@ Design docs: [`docs/specs/2026-09-30-pipeline-technical-design.md`](docs/specs/2
 Aggregation (`aggregation.method`): `gated_geometric` (any catastrophic critic → 0, else geometric mean of
 keep/follow/world) or `weighted_sum` (legacy baseline, always logged as `weighted_sum_baseline`).
 
-## Setup (Windows / Linux, 8 GB GPU is enough)
+## Installation
+
+Requirements: Python 3.10+ (developed on 3.12), a CUDA GPU (8 GB is enough for the default config; Qwen-Image-Edit
+needs ~80 GB), about 13 GB of disk for model weights.
 
 ```bash
-python -m venv .venv && .venv\Scripts\activate        # Linux: source .venv/bin/activate
+git clone https://github.com/Sherry1247/self_improving_editor.git
+cd self_improving_editor
+python -m venv .venv
+.venvScriptsctivate                 # Linux / macOS: source .venv/bin/activate
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128   # RTX 50xx needs cu128+
 pip install -r requirements.txt
-python -m pytest -q                                   # 21 CPU tests, no weights needed
-python experiments/download_models.py                 # ~13 GB into the Hugging Face cache
+python experiments/download_models.py   # ~13 GB into the Hugging Face cache
 ```
 
-## Run
+## Usage
 
 ```bash
 # 0. if anything runs out of memory: per-model GPU/RAM usage report
@@ -80,7 +151,7 @@ Every task writes `runs/<name>/<task>/{before.png, best.png, panel_best.jpg, rep
 On the submit server (`ssh <netid>@ap2001.chtc.wisc.edu`):
 
 ```bash
-git clone -b feat/bg-critic-mvp https://github.com/Sherry1247/self_improving_editor.git && cd self_improving_editor
+git clone https://github.com/Sherry1247/self_improving_editor.git && cd self_improving_editor
 bash chtc/pack.sh                                                      # code + images -> chtc/payload.tar.gz
 condor_submit chtc/job.sub MODE=check RUN=check1 LIST=jobs/one.txt     # 1. GPU / memory sanity check
 condor_submit chtc/job.sub MODE=loop  RUN=smoke  LIST=jobs/smoke.txt EXTRA="--targets snow --save-candidates"
@@ -98,7 +169,7 @@ Each job pulls the container's PyTorch, pip-installs `requirements.txt` into a v
 models it needs from Hugging Face into its scratch dir (nothing is stored in your CHTC home).
 Re-run `chtc/pack.sh` after every `git pull`.
 
-## Layout
+## Project layout
 
 ```
 configs/        default.yaml (8 GB laptop), chtc.yaml (overrides)
@@ -119,3 +190,39 @@ tests/          CPU tests with synthetic scenes and fake models
 
 `data/labels.csv` columns: `filename, object, action, background, submerged` (`submerged=1` when the
 subject is partly in water in the original photo — the hardest case for covariant physics).
+
+## Testing
+
+```bash
+python -m pytest -q        # 33 CPU tests with synthetic scenes and fake models; no weights or GPU needed
+```
+
+## Documentation
+
+* Design: [pipeline](docs/specs/2026-09-30-pipeline-technical-design.md),
+  [critic architecture](docs/specs/2026-09-10-critic-pipeline-architecture-design.md),
+  [related work, contributions A–E and plan](docs/specs/2026-09-30-bg-replacement-critic-novelty-and-plan.md)
+* Results: [first CHTC runs](docs/results/2026-10-01-first-chtc-runs.md),
+  [critics v2](docs/results/2026-10-02-critics-v2.md)
+* [Phase 1 audit](docs/PHASE1_AUDIT.md)
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `python -m pytest -q` before opening a PR and keep new
+critics covered by a test in `tests/` (synthetic scenes, no model weights).
+
+## License
+
+Released under the [MIT License](LICENSE). Model weights (Grounding DINO, SAM 2, DINOv2, SigLIP, Depth Anything V2,
+Qwen2.5-VL, InstructPix2Pix, SDXL, Qwen-Image-Edit) are downloaded from Hugging Face and keep their own licenses.
+
+## Citation
+
+```bibtex
+@misc{self_improving_editor,
+  title  = {Self-Improving Background Editor: critic-driven closed-loop background replacement},
+  author = {Dai, Siqi},
+  year   = {2026},
+  url    = {https://github.com/Sherry1247/self_improving_editor}
+}
+```
