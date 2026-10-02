@@ -54,7 +54,7 @@ critics:
   silhouette:    {issue_below: 0.75}
   appearance:    {sigma: 20.0, issue_below: 0.4}
   texture:       {lo: 0.4, hi: 0.85, issue_below: 0.6}
-  bg_semantic:   {issue_below: 0.5}
+  bg_semantic:   {issue_below: 0.5, catastrophic_if_source: true}   # still the source scene = restyle, not replacement
   old_bg_residue: {issue_above: 0.3}
   support:       {sigma: 0.08, issue_below: 0.5}
   contact_shadow: {issue_below: 0.4}
@@ -88,6 +88,7 @@ aggregation:
     vlm_lighting: 0.7
     vlm_background: 1.0
   branch_weights: {keep: 1.0, follow: 1.0, world: 1.0}
+  branch_reduce: {keep: mean, follow: mean, world: softmin2}   # world: mean of the 2 weakest physical checks
 
 editors:
   qwen_edit:

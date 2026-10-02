@@ -176,3 +176,22 @@ def test_violation_null_positive():
 def test_any_catastrophic_critic_gates():
     cr = {"k": CriticResult("k", "keep", 0.9), "f": CriticResult("f", "follow", 0.0, is_catastrophic=True)}
     assert GatedGeometricAggregator(CFG).aggregate(cr).overall == 0.0
+
+
+def test_semantic_gate_on_restyle():
+    per = FakePerceiver()
+    ev = Evaluator(per, build_critics(CFG), GatedGeometricAggregator(CFG))
+    before = per.perceive(make_scene("river")[0], SPEC)
+    after = per.perceive(make_scene("snow")[0], SPEC)
+    after.bg_probs = {k: (0.9 if k == "river" else 0.1 / 6) for k in after.bg_probs}  # still looks like the river
+    res, _, _ = ev.evaluate(before, after.image, SPEC, after=after)
+    assert res.critics["bg_semantic"].is_catastrophic and res.overall == 0.0
+    forest = build_spec("dog_sit_river_01", "dog", "sit", "river", "forest")  # forest may contain a river
+    res2, _, _ = ev.evaluate(before, after.image, forest, after=after)
+    assert not res2.critics["bg_semantic"].is_catastrophic
+
+
+def test_world_softmin():
+    cr = {"a": CriticResult("a", "world", 1.0), "b": CriticResult("b", "world", 1.0),
+          "c": CriticResult("c", "world", 0.2), "d": CriticResult("d", "world", 0.4)}
+    assert GatedGeometricAggregator(CFG).branch_scores(cr)["world"] == pytest.approx(0.3)

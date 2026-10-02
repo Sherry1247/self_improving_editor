@@ -22,6 +22,10 @@ class Aggregator(ABC):
         acfg = cfg.get("aggregation", {})
         self.weights: dict[str, float] = acfg.get("weights", {})
         self.branch_weights: dict[str, float] = acfg.get("branch_weights", {})
+        # per-branch reduction: "mean" (weighted) or "softmin<k>" (mean of the k lowest scores).
+        # World defaults to softmin2: one physical error (floating, pasted look) ruins realism on its own,
+        # so a branch average over seven checks would hide it.
+        self.reduce: dict[str, str] = acfg.get("branch_reduce", {})
 
     @abstractmethod
     def aggregate(self, critics: dict[str, CriticResult]) -> EvaluationResult: ...
@@ -32,7 +36,14 @@ class Aggregator(ABC):
             items = [(c.score, self.weights.get(n, 1.0)) for n, c in critics.items()
                      if c.branch == b and c.applicable]
             wsum = sum(w for _, w in items)
-            if items and wsum > 0:
+            if not items or wsum <= 0:
+                continue
+            mode = self.reduce.get(b, "mean")
+            if mode.startswith("softmin"):
+                k = int(mode[len("softmin"):] or 2)
+                low = sorted(s for s, _ in items)[:k]
+                out[b] = sum(low) / len(low)
+            else:
                 out[b] = sum(s * w for s, w in items) / wsum
         return out
 

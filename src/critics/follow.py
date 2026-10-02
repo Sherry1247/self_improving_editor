@@ -22,11 +22,17 @@ class BackgroundSemanticCritic(Critic):
         competitor = max(v for k, v in probs.items() if k != tgt)
         score = p_t / (p_t + competitor + 1e-9)
         issues = []
+        catastrophic = False
         if top == src:
             issues.append(IssueType.BG_UNCHANGED)
+            # still recognised as the SOURCE scene: a restyle (e.g. green tint for "forest"), not a replacement.
+            # Pixel-feature change alone cannot catch this, because heavy recolouring moves DINOv2 features too.
+            # (not when the target scene may legitimately contain the source concepts, e.g. river -> forest)
+            catastrophic = bool(self.p("catastrophic_if_source", True)) and not ctx.spec.old_bg_may_reappear
         elif top != tgt or score < self.p("issue_below", 0.5):
             issues.append(IssueType.BG_WRONG)
-        return self.result(score, issues, p_target=p_t, top=top, p_top=probs[top], p_source=probs.get(src, 0.0))
+        return self.result(score, issues, catastrophic, p_target=p_t, top=top, p_top=probs[top],
+                           p_source=probs.get(src, 0.0))
 
 
 class OldBackgroundResidueCritic(Critic):
