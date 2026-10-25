@@ -5,6 +5,7 @@
 #        loop    -> experiments/run_loop.py --samples <sample>   (all targets of that sample)
 #        auroc   -> experiments/critic_auroc.py                  (all samples)
 #        rescore -> experiments/rescore.py on rescore_*.tar.gz  (built by chtc/pack_rescore.sh)
+#        covtest -> experiments/covariance_test.py (pasted vs re-lit subject; same input bundle as rescore)
 # env:   EDITOR=ip2p|compositing|qwen_edit (default ip2p), HF_TOKEN optional
 set -euo pipefail
 
@@ -44,12 +45,13 @@ case "$MODE" in
   check) "$PY" experiments/check_env.py "${OVR[@]}" "$@" | tee "check_${RUN}.txt"; mkdir -p runs/$RUN; cp "check_${RUN}.txt" runs/$RUN/ ;;
   loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
   auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
-  rescore)
+  rescore|covtest)
     SRCS=()
     mkdir -p rescore_in
     for t in "$SCRATCH"/rescore_*.tar.gz; do tar xzf "$t" -C rescore_in; done
     for d in rescore_in/runs/*/; do SRCS+=("$d"); done
-    "$PY" experiments/rescore.py "${OVR[@]}" --name "$RUN" --src "${SRCS[@]}" "$@" ;;
+    if [ "$MODE" = "covtest" ]; then SCRIPT=experiments/covariance_test.py; else SCRIPT=experiments/rescore.py; fi
+    "$PY" "$SCRIPT" "${OVR[@]}" --name "$RUN" --src "${SRCS[@]}" "$@" ;;
   *) echo "unknown mode $MODE"; exit 2 ;;
 esac
 

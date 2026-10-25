@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.critics.base import Critic, CriticContext
+from src.critics.base import Critic, CriticContext, ramp
 from src.types import CriticResult, IssueType, Regions
 from src.utils.color import to_lab
 from src.utils.geometry import mask_box
@@ -120,8 +120,32 @@ def _illum_mismatch(img: np.ndarray, subject: np.ndarray, background: np.ndarray
     return float(np.linalg.norm(s - g))
 
 
+def _illum_vectors(img: np.ndarray, subject: np.ndarray, background: np.ndarray):
+    """(subject, background) lighting descriptors [0.5*mean L, highlight a, highlight b] — or None if too small."""
+    lab = to_lab(img)
+    s_hl, g_hl = _highlight_ab(lab, subject), _highlight_ab(lab, background)
+    if s_hl is None or g_hl is None or background.sum() < 50:
+        return None
+    L = lab[..., 0]
+    s = np.array([0.5 * float(L[subject].mean()), *s_hl])
+    g = np.array([0.5 * float(L[background].mean()), *g_hl])
+    return s, g
+
+
 class LightHarmonyCritic(Critic):
-    """Do subject highlights share the scene illuminant colour? Excess mismatch vs the real photo = pasted look."""
+    """Is the subject lit by the NEW scene?
+
+    Two parts, multiplied:
+      * **mismatch** (v2): do subject highlights share the scene illuminant colour? Excess vs the real photo.
+      * **co-change** (v3, ``variant="v3"``, default): when the background's lighting changed (brightness /
+        colour of the scene), the subject's lighting must follow. Two fractions in [-1, 1]: *brightness* =
+        Δ(subject mean L) / Δ(background mean L), and *chroma* = how much the subject's highlight colour moved
+        toward the NEW scene's illuminant colour. 0 = subject untouched (pasted look), 1 = fully re-lit,
+        < 0 = moved the wrong way (random cast). Skipped parts: scene brightness / colour barely changed.
+
+    v2 only compared against the before photo, so a pasted subject whose original lighting happened to
+    be 'not worse than the real photo' scored fine. ``variant="v2"`` keeps that behaviour for ablations.
+    """
 
     name, branch = "light_harmony", "world"
 
@@ -133,9 +157,34 @@ class LightHarmonyCritic(Critic):
         if ctx.regions_before is not None:
             m_b = _illum_mismatch(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
         excess = max(0.0, m_a - (m_b or 0.0))
-        score = float(np.exp(-excess / self.p("sigma", 18.0)))
+        mismatch_score = float(np.exp(-excess / self.p("sigma", 18.0)))
+        ev = dict(mismatch_after=m_a, mismatch_before=m_b, excess=excess, mismatch_score=mismatch_score)
+        score = mismatch_score
+        if self.p("variant", "v3") == "v3" and ctx.regions_before is not None:
+            va = _illum_vectors(ctx.after.image, ctx.after.subject_mask, ctx.regions.background)
+            vb = _illum_vectors(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
+            if va is not None and vb is not None:
+                (s_b, g_b), (s_a, g_a) = vb, va
+                ev.update(bg_light_change=float(np.linalg.norm(g_a - g_b)),
+                          subject_light_change=float(np.linalg.norm(s_a - s_b)))
+                parts = {}
+                dl_g = float(g_a[0] - g_b[0])  # brightness: the subject must brighten/darken with the scene
+                if abs(dl_g) >= self.p("min_bg_change", 4.0):
+                    parts["brightness"] = float(np.clip((s_a[0] - s_b[0]) / dl_g, -1.0, 1.0))
+                d0 = float(np.linalg.norm(s_b[1:] - g_a[1:]))  # colour: subject highlights move toward the new illuminant
+                bg_chroma_change = float(np.linalg.norm(g_a[1:] - g_b[1:]))
+                if d0 >= self.p("min_chroma_gap", 8.0) and bg_chroma_change >= self.p("min_bg_chroma_change", 4.0):
+                    parts["chroma"] = float(np.clip((d0 - np.linalg.norm(s_a[1:] - g_a[1:])) / d0, -1.0, 1.0))
+                if parts:
+                    follow = float(np.mean(list(parts.values())))
+                    cov = ramp(follow, 0.0, self.p("follow_target", 0.25))
+                    floor = self.p("floor", 0.3)
+                    score = mismatch_score * (floor + (1.0 - floor) * cov)
+                    ev.update(follow=follow, follow_parts=parts, cochange=cov)
+                else:
+                    ev["cochange"] = None  # scene lighting did not change: nothing for the subject to follow
         issues = [IssueType.LIGHT_MISMATCH] if score < self.p("issue_below", 0.5) else []
-        return self.result(score, issues, mismatch_after=m_a, mismatch_before=m_b, excess=excess)
+        return self.result(score, issues, **ev)
 
 
 class HaloCritic(Critic):

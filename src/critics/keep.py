@@ -6,6 +6,7 @@ background swap the subject's lighting SHOULD change. Only texture / structure c
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 from src.critics.base import Critic, CriticContext, ramp
@@ -50,8 +51,43 @@ class SilhouetteCritic(Critic):
                            transform=ctx.regions.transform)
 
 
+def _masked_blur(x: np.ndarray, mask: np.ndarray, sigma: float) -> np.ndarray:
+    """Gaussian blur that only averages pixels inside ``mask`` (no bleeding from outside the subject)."""
+    m = mask.astype(np.float32)
+    num = cv2.GaussianBlur(x.astype(np.float32) * m, (0, 0), sigma)
+    den = cv2.GaussianBlur(m, (0, 0), sigma)
+    return num / np.maximum(den, 1e-3)
+
+
+def structure_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, sigma: float) -> float:
+    """Zero-normalised correlation of the HIGH-PASS luminance of two images inside ``region``.
+
+    High-pass removes the slowly varying illumination (side light, gradients, global gain); the
+    correlation is invariant to local gain and offset, so only fine structure (texture, edges, pattern)
+    is compared. Identical structure -> 1, destroyed/changed structure -> ~0.
+    """
+    hb = l_before - _masked_blur(l_before, region, sigma)
+    ha = l_after - _masked_blur(l_after, region, sigma)
+    xb, xa = hb[region], ha[region]
+    xb, xa = xb - xb.mean(), xa - xa.mean()
+    nb, na = float(np.sqrt((xb ** 2).sum())), float(np.sqrt((xa ** 2).sum()))
+    eps = 1e-3 * np.sqrt(len(xb))
+    if nb < eps and na < eps:
+        return 1.0  # both flat: nothing to compare
+    if nb < eps or na < eps:
+        return 0.0  # structure appeared or vanished
+    return float((xb * xa).sum() / (nb * na))
+
+
 class AppearanceCritic(Critic):
-    """Illumination-normalised colour distance inside the overlap of aligned-before and after subject masks."""
+    """Subject appearance preserved? (identity / texture / structure — NOT lighting).
+
+    ``variant="v3"`` (default) compares only illumination-invariant structure: zero-normalised correlation of
+    the high-pass luminance (so side light, shading gradients and global gain are ignored) combined with a
+    low-weight chroma term after removing the global colour cast. ``variant="v2"`` is the original Lab
+    distance after global Reinhard matching, kept for ablations: it still counts local re-lighting
+    (side light, new shadow side) as drift and therefore prefers copy-pasted subjects.
+    """
 
     name, branch = "appearance", "keep"
 
@@ -69,9 +105,24 @@ class AppearanceCritic(Critic):
         diff = np.abs(lab_a_norm - lab_b)[region]
         d = float((diff * np.array([0.5, 1.0, 1.0])).sum(-1).mean())
         raw = float(np.abs(lab_a - lab_b)[region].sum(-1).mean())
-        score = float(np.exp(-d / self.p("sigma", 20.0)))
+        v2_score = float(np.exp(-d / self.p("sigma", 20.0)))
+        if self.p("variant", "v3") == "v2":
+            score = v2_score
+            issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
+            return self.result(score, issues, normalized_dist=d, raw_dist=raw, variant="v2")
+
+        sigma = max(2.0, self.p("highpass_frac", 0.05) * float(np.sqrt(region.sum())))
+        zncc = structure_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma)
+        structure = ramp(zncc, self.p("zncc_lo", 0.2), self.p("zncc_hi", 0.8))
+        # chroma: remove only the global mean shift (a cast is lighting), keep the spatial colour pattern
+        ab_b, ab_a = lab_b[..., 1:], lab_a[..., 1:]
+        shift = ab_a[region].mean(0) - ab_b[region].mean(0)
+        chroma_d = float(np.linalg.norm((ab_a - shift - ab_b)[region], axis=-1).mean())
+        chroma = float(np.exp(-chroma_d / self.p("chroma_sigma", 30.0)))
+        score = structure * chroma
         issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
-        return self.result(score, issues, normalized_dist=d, raw_dist=raw)
+        return self.result(score, issues, variant="v3", zncc=zncc, structure=structure, chroma_dist=chroma_d,
+                           chroma=chroma, normalized_dist=d, raw_dist=raw, v2_score=v2_score)
 
 
 class TextureCritic(Critic):
