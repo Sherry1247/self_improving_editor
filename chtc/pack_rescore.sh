@@ -1,13 +1,17 @@
 #!/bin/bash
-# Bundle before.png / best.png / report.json of finished runs for MODE=rescore.
+# Bundle before.png / best.png / report.json of finished runs for MODE=rescore / MODE=covtest.
 #   bash chtc/pack_rescore.sh ip2p comp      -> chtc/rescore_in.tar.gz
+# Extracts only those three files per task into a temp dir on LOCAL /tmp (not your quota-limited home),
+# and always cleans the temp dir, even on failure.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TMP=$(mktemp -d)
+OUT="$PWD/chtc/rescore_in.tar.gz"
+TMP=$(mktemp -d -p "${PACK_TMP:-/tmp}")
+trap 'rm -rf "$TMP"' EXIT
 for RUN in "$@"; do
-  for f in results/result_${RUN}_*.tar.gz; do tar xzf "$f" -C "$TMP"; done
+  for f in results/result_${RUN}_*.tar.gz; do
+    tar xzf "$f" -C "$TMP" --wildcards '*/report.json' '*/best.png' '*/before.png'
+  done
 done
-cd "$TMP"
-find runs -name report.json -o -name best.png -o -name before.png | tar czf "$OLDPWD/chtc/rescore_in.tar.gz" -T -
-cd "$OLDPWD"; rm -rf "$TMP"
-echo "rescore input: $(du -h chtc/rescore_in.tar.gz | cut -f1)"
+(cd "$TMP" && find runs -name report.json -o -name best.png -o -name before.png | tar czf "$OUT" -T -)
+echo "rescore input: $(du -h "$OUT" | cut -f1)"
