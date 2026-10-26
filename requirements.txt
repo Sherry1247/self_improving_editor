@@ -16,3 +16,4 @@ pyyaml>=6
 psutil>=5.9
 scipy>=1.14
 pytest>=8
+brotli>=1.2.0   # CHTC fix: huggingface_hub/httpx2 passes output_buffer_limit; the container's older brotli rejects it ("process() takes no keyword arguments")
