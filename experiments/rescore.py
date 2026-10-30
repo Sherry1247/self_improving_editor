@@ -21,8 +21,13 @@ def main():
     ap.add_argument("--src", nargs="+", required=True, help="run directories to re-score")
     ap.add_argument("--name", default="rescored")
     ap.add_argument("--panels", type=int, default=12, help="save panels for the N largest score changes")
+    ap.add_argument("--with", dest="with_", nargs="*", default=["light_cochange", "unchanged_bg"],
+                    help="exploratory critics to evaluate and log (excluded from the scores); default both, none = ''")
     args = ap.parse_args()
     cfg = setup(args)
+    for extra in args.with_:
+        if extra not in cfg["critics"]["enabled"]:
+            cfg["critics"]["enabled"] = list(cfg["critics"]["enabled"]) + [extra]
 
     from PIL import Image
 
@@ -57,6 +62,14 @@ def main():
                    "weighted_sum_baseline": _r(bs.get("weighted_sum_baseline")),
                    "bg_top": ev.critics["bg_semantic"].evidence.get("top") if "bg_semantic" in ev.critics else None,
                    "issues": " ".join(i.value for i in ev.issues)}
+            for name, key, col in (("appearance", "zncc", "app_zncc"), ("appearance", "unreliable_alignment", "app_unreliable"),
+                                   ("unchanged_bg", "blob_frac", "unchanged_blob_frac"), ("light_cochange", "follow", "cochange_follow")):
+                if name in ev.critics:
+                    row[col] = _r(ev.critics[name].evidence.get(key)) if key != "unreliable_alignment" else bool(ev.critics[name].evidence.get(key))
+            for name in ("appearance", "light_harmony", "light_cochange", "unchanged_bg", "vlm_lighting", "vlm_integration", "vlm_shadow",
+                         "vlm_surface", "support", "texture", "silhouette"):
+                if name in ev.critics:
+                    row["c_" + name] = _r(ev.critics[name].score)
             rows.append(row)
             changes.append((abs(row["new_score"] - row["old_score"]), spec.task_id, src.name, before_img, best_img,
                             regions, ev))

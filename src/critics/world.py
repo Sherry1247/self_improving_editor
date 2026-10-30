@@ -132,19 +132,43 @@ def _illum_vectors(img: np.ndarray, subject: np.ndarray, background: np.ndarray)
     return s, g
 
 
+def cochange_follow(ctx: CriticContext, params: dict) -> dict:
+    """How much did the subject's lighting follow the change of the scene's lighting? (see LightCoChangeCritic)
+
+    Returns {tested, follow, parts, cochange, bg_light_change, subject_light_change}. ``tested`` is False when the
+    scene lighting barely changed (nothing to follow) or the regions are too small.
+    """
+    out = {"tested": False, "follow": None, "parts": {}, "cochange": None}
+    if ctx.regions_before is None:
+        return out
+    va = _illum_vectors(ctx.after.image, ctx.after.subject_mask, ctx.regions.background)
+    vb = _illum_vectors(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
+    if va is None or vb is None:
+        return out
+    (s_b, g_b), (s_a, g_a) = vb, va
+    out.update(bg_light_change=float(np.linalg.norm(g_a - g_b)), subject_light_change=float(np.linalg.norm(s_a - s_b)))
+    parts = {}
+    dl_g = float(g_a[0] - g_b[0])  # brightness: the subject must brighten/darken with the scene
+    if abs(dl_g) >= params.get("min_bg_change", 4.0):
+        parts["brightness"] = float(np.clip((s_a[0] - s_b[0]) / dl_g, -1.0, 1.0))
+    d0 = float(np.linalg.norm(s_b[1:] - g_a[1:]))  # colour: subject highlights move toward the new illuminant
+    bg_chroma_change = float(np.linalg.norm(g_a[1:] - g_b[1:]))
+    if d0 >= params.get("min_chroma_gap", 8.0) and bg_chroma_change >= params.get("min_bg_chroma_change", 4.0):
+        parts["chroma"] = float(np.clip((d0 - np.linalg.norm(s_a[1:] - g_a[1:])) / d0, -1.0, 1.0))
+    if parts:
+        follow = float(np.mean(list(parts.values())))
+        out.update(tested=True, follow=follow, parts=parts, cochange=ramp(follow, 0.0, params.get("follow_target", 0.25)))
+    return out
+
+
 class LightHarmonyCritic(Critic):
-    """Is the subject lit by the NEW scene?
+    """Do the subject's highlights share the scene illuminant colour? Excess mismatch vs the real photo = pasted look.
 
-    Two parts, multiplied:
-      * **mismatch** (v2): do subject highlights share the scene illuminant colour? Excess vs the real photo.
-      * **co-change** (v3, ``variant="v3"``, default): when the background's lighting changed (brightness /
-        colour of the scene), the subject's lighting must follow. Two fractions in [-1, 1]: *brightness* =
-        Δ(subject mean L) / Δ(background mean L), and *chroma* = how much the subject's highlight colour moved
-        toward the NEW scene's illuminant colour. 0 = subject untouched (pasted look), 1 = fully re-lit,
-        < 0 = moved the wrong way (random cast). Skipped parts: scene brightness / colour barely changed.
-
-    v2 only compared against the before photo, so a pasted subject whose original lighting happened to
-    be 'not worse than the real photo' scored fine. ``variant="v2"`` keeps that behaviour for ablations.
+    ``variant="v2"`` (default): this mismatch score only; it is the version validated on the violation suite
+    (colour cast AUROC 1.00). ``variant="v3"`` multiplies in the co-change part (legacy / ablation): that variant
+    was found to be non-comparable across editors — the co-change test applies only where the scene lighting
+    changed (83 % of Qwen tasks but 18 % of compositing tasks), so the editor whose scene lighting stayed close to the
+    original silently skips it. Use ``light_cochange`` (exploratory, n/a when untestable) instead.
     """
 
     name, branch = "light_harmony", "world"
@@ -158,36 +182,39 @@ class LightHarmonyCritic(Critic):
             m_b = _illum_mismatch(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
         excess = max(0.0, m_a - (m_b or 0.0))
         mismatch_score = float(np.exp(-excess / self.p("sigma", 18.0)))
-        ev = dict(mismatch_after=m_a, mismatch_before=m_b, excess=excess, mismatch_score=mismatch_score)
+        ev = dict(mismatch_after=m_a, mismatch_before=m_b, excess=excess, mismatch_score=mismatch_score,
+                  cochange_tested=False)
         score = mismatch_score
-        ev["cochange_tested"] = False  # becomes True only if the scene lighting changed enough to test it
-        if self.p("variant", "v3") == "v3" and ctx.regions_before is not None:
-            va = _illum_vectors(ctx.after.image, ctx.after.subject_mask, ctx.regions.background)
-            vb = _illum_vectors(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
-            if va is not None and vb is not None:
-                (s_b, g_b), (s_a, g_a) = vb, va
-                ev.update(bg_light_change=float(np.linalg.norm(g_a - g_b)),
-                          subject_light_change=float(np.linalg.norm(s_a - s_b)))
-                parts = {}
-                dl_g = float(g_a[0] - g_b[0])  # brightness: the subject must brighten/darken with the scene
-                if abs(dl_g) >= self.p("min_bg_change", 4.0):
-                    parts["brightness"] = float(np.clip((s_a[0] - s_b[0]) / dl_g, -1.0, 1.0))
-                d0 = float(np.linalg.norm(s_b[1:] - g_a[1:]))  # colour: subject highlights move toward the new illuminant
-                bg_chroma_change = float(np.linalg.norm(g_a[1:] - g_b[1:]))
-                if d0 >= self.p("min_chroma_gap", 8.0) and bg_chroma_change >= self.p("min_bg_chroma_change", 4.0):
-                    parts["chroma"] = float(np.clip((d0 - np.linalg.norm(s_a[1:] - g_a[1:])) / d0, -1.0, 1.0))
-                if parts:
-                    follow = float(np.mean(list(parts.values())))
-                    cov = ramp(follow, 0.0, self.p("follow_target", 0.25))
-                    floor = self.p("floor", 0.3)
-                    score = mismatch_score * (floor + (1.0 - floor) * cov)
-                    ev.update(follow=follow, follow_parts=parts, cochange=cov, cochange_tested=True)
-                else:
-                    # scene lighting barely changed: the co-change part cannot be tested. The score below is the
-                    # v2 mismatch score ONLY and must not be read as "lighting verified" (cochange_tested=False).
-                    ev["cochange"] = None
+        if self.p("variant", "v2") == "v3":
+            cc = cochange_follow(ctx, self.params)
+            ev.update(cochange_tested=cc["tested"], follow=cc["follow"], follow_parts=cc["parts"], cochange=cc["cochange"])
+            if cc["tested"]:
+                floor = self.p("floor", 0.3)
+                score = mismatch_score * (floor + (1.0 - floor) * cc["cochange"])
         issues = [IssueType.LIGHT_MISMATCH] if score < self.p("issue_below", 0.5) else []
         return self.result(score, issues, **ev)
+
+
+class LightCoChangeCritic(Critic):
+    """Exploratory: did the subject's lighting follow the scene's lighting change? n/a when it cannot be tested.
+
+    Two fractions in [-1, 1]: *brightness* = delta(subject mean L) / delta(background mean L), and *chroma* = how
+    far the subject's highlight colour moved toward the NEW scene illuminant. 0 = subject untouched (pasted look),
+    1 = fully re-lit, < 0 = wrong direction. Passes the constructive pasted-vs-relit test, but on real results it
+    disagrees with the independent VLM lighting critic (Qwen: follow ~ 0 yet vlm_lighting 0.93), so it is kept out
+    of the default aggregate (``aggregation.exclude``) until validated.
+    """
+
+    name, branch = "light_cochange", "world"
+
+    def evaluate(self, ctx: CriticContext) -> CriticResult:
+        cc = cochange_follow(ctx, self.params)
+        if not cc["tested"]:
+            return self.not_applicable("scene lighting barely changed: nothing for the subject to follow")
+        score = cc["cochange"]
+        issues = [IssueType.LIGHT_MISMATCH] if score < self.p("issue_below", 0.5) else []
+        return self.result(score, issues, follow=cc["follow"], follow_parts=cc["parts"],
+                           bg_light_change=cc.get("bg_light_change"), subject_light_change=cc.get("subject_light_change"))
 
 
 class HaloCritic(Critic):

@@ -7,13 +7,13 @@ from src.critics.follow import BackgroundSemanticCritic, OldBackgroundResidueCri
 from src.critics.gate import BackgroundChangedCritic, IdentityCritic, SubjectCountCritic
 from src.critics.keep import AppearanceCritic, SilhouetteCritic, TextureCritic
 from src.critics.vlm import VLM_CRITICS
-from src.critics.world import ContactShadowCritic, HaloCritic, LightHarmonyCritic, SupportCritic
+from src.critics.world import ContactShadowCritic, HaloCritic, LightCoChangeCritic, LightHarmonyCritic, SupportCritic
 
 CRITICS: dict[str, type[Critic]] = {c.name: c for c in [
     SubjectCountCritic, IdentityCritic, BackgroundChangedCritic,
     SilhouetteCritic, AppearanceCritic, TextureCritic,
     BackgroundSemanticCritic, OldBackgroundResidueCritic, UnchangedBackgroundCritic,
-    SupportCritic, ContactShadowCritic, LightHarmonyCritic, HaloCritic, *VLM_CRITICS,
+    SupportCritic, ContactShadowCritic, LightHarmonyCritic, LightCoChangeCritic, HaloCritic, *VLM_CRITICS,
 ]}
 
 

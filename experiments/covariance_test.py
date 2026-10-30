@@ -9,6 +9,8 @@ Every task's best.png is scored in three versions with the CURRENT critics:
   null   : same Lab round trip as the re-lit one but with zero strength -> must score like 'pasted'
            (the largest |null - pasted| over all critics is the pipeline noise floor)
   relit  : the subject re-lit for its new background (validation/relight.py, conservative)
+  degraded: slight blur + sub-pixel shift + JPEG of the whole image (identity-preserving nuisance, mimics a generative
+           editor's re-encoding): appearance / texture must stay about as high as for 'pasted' -> tolerance control
 A covariance-aware critic gives relit >= pasted on the world branch and does not lose it on keep.
 
 Writes runs/<name>/covtest.csv with EVERY critic's score per version, the appearance evidence (zncc, alignment IoU,
@@ -26,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from common import ROOT, base_parser, build_evaluation_stack, new_run_dir, setup
 
-VERSIONS = ("pasted", "null", "relit")
+VERSIONS = ("pasted", "null", "relit", "degraded")
 
 
 def split_of(sample_id: str) -> str:
@@ -42,11 +44,14 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="debug: only the first N tasks per run")
     args = ap.parse_args()
     cfg = setup(args)
+    for extra in ("light_cochange", "unchanged_bg"):  # exploratory critics: logged, excluded from scores
+        if extra not in cfg["critics"]["enabled"]:
+            cfg["critics"]["enabled"] = list(cfg["critics"]["enabled"]) + [extra]
 
     from PIL import Image
 
     from src.spec import build_spec
-    from validation.relight import relight_subject
+    from validation.relight import degrade_image, relight_subject
 
     out = new_run_dir(cfg, args.name)
     _, perceiver, evaluator = build_evaluation_stack(cfg)
@@ -71,7 +76,8 @@ def main():
             imgs = {"pasted": pasted,
                     "null": relight_subject(pasted, after.subject_mask, strength=0.0, side=0.0),
                     "relit": relight_subject(pasted, after.subject_mask, strength=args.strength, side=args.side,
-                                             direction=direction)}
+                                             direction=direction),
+                    "degraded": degrade_image(pasted)}
             row = {"run": src.name, "task_id": spec.task_id, "sample": sp["sample_id"], "split": split_of(sp["sample_id"]),
                    "target": spec.target_bg.key}
             for tag, img in imgs.items():
@@ -84,13 +90,18 @@ def main():
                     row[f"{tag}_c_{name}"] = _r(c.score)
                 a = ev.critics.get("appearance")
                 if a is not None:
-                    for k in ("zncc", "zncc_raw", "align_iou", "chroma_dist"):
+                    for k in ("zncc", "zncc_raw", "zncc_fine", "align_iou", "chroma_dist"):
                         row[f"{tag}_app_{k}"] = _r(a.evidence.get(k))
+                    for k_, v_ in (a.evidence.get("zncc_by_scale") or {}).items():
+                        row[f"{tag}_app_z{k_}"] = _r(v_)
                     row[f"{tag}_app_unreliable"] = bool(a.evidence.get("unreliable_alignment"))
-                lh = ev.critics.get("light_harmony")
-                if lh is not None:
-                    row[f"{tag}_lh_cochange_tested"] = bool(lh.evidence.get("cochange_tested"))
-                    row[f"{tag}_lh_follow"] = _r(lh.evidence.get("follow"))
+                lc = ev.critics.get("light_cochange")
+                if lc is not None:
+                    row[f"{tag}_lh_cochange_tested"] = lc.score is not None
+                    row[f"{tag}_lh_follow"] = _r(lc.evidence.get("follow"))
+                ub = ev.critics.get("unchanged_bg")
+                if ub is not None:
+                    row[f"{tag}_unchanged_blob_frac"] = _r(ub.evidence.get("blob_frac"))
             rows.append(row)
             print(f"{src.name}/{spec.task_id} [{row['split']}]: world {row['pasted_world']} -> {row['relit_world']}  "
                   f"keep {row['pasted_keep']} -> {row['relit_keep']}")
@@ -106,7 +117,7 @@ def main():
 
 
 def summarize(rows):
-    keys = ["overall", "keep", "world", "c_appearance", "c_light_harmony", "c_support", "c_halo", "c_vlm_lighting",
+    keys = ["overall", "keep", "world", "c_appearance", "c_texture", "c_light_harmony", "c_light_cochange", "c_support", "c_halo", "c_vlm_lighting",
             "c_vlm_integration", "c_vlm_shadow"]
     noise = max((abs((r.get(f"null_{k}") or 0) - (r.get(f"pasted_{k}") or 0)) for r in rows for k in keys
                  if r.get(f"null_{k}") is not None and r.get(f"pasted_{k}") is not None), default=0.0)
@@ -118,6 +129,12 @@ def summarize(rows):
                 continue
             tested = np.mean([bool(r.get("pasted_lh_cochange_tested")) for r in sel])
             unrel = np.mean([bool(r.get("pasted_app_unreliable")) for r in sel])
+            deg = [(r["pasted_c_appearance"], r["degraded_c_appearance"]) for r in sel
+                   if r.get("pasted_c_appearance") is not None and r.get("degraded_c_appearance") is not None]
+            if deg:
+                a_, b_ = np.array(deg).T
+                print(f"\n   TOLERANCE control (degraded vs pasted, identity unchanged): appearance {a_.mean():.3f} -> "
+                      f"{b_.mean():.3f}  (should stay ~equal; a big drop = tolerance too tight)")
             print(f"\n== {run} / {split}  n={len(sel)}  light co-change testable {tested:.0%}  appearance unreliable-alignment {unrel:.0%}")
             for k in keys:
                 pairs = [(r[f"pasted_{k}"], r[f"relit_{k}"]) for r in sel

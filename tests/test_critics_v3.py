@@ -15,6 +15,7 @@ from src.critics.keep import AppearanceCritic, refine_zncc, structure_zncc
 from src.critics.follow import UnchangedBackgroundCritic
 from src.critics.world import LightHarmonyCritic
 from src.regions import partition
+from src.types import CriticResult
 from src.spec import build_spec
 from validation.relight import relight_subject
 from fakes import FakePerceiver, make_scene, subject_mask
@@ -159,3 +160,49 @@ def test_unchanged_bg_detects_kept_old_scene_chunks():
     good, bad = c.evaluate(context(clean)), c.evaluate(context(kept))
     assert bad.evidence["blob_frac"] > good.evidence["blob_frac"] + 0.05
     assert bad.score < good.score
+
+
+def test_multiscale_zncc_tolerates_reencoding_noise_but_not_pattern_change():
+    import cv2
+    from src.critics.keep import multiscale_zncc
+    from validation.relight import degrade_image
+
+    rng = np.random.default_rng(1)
+    base = cv2.GaussianBlur(rng.normal(0, 1, (160, 160)).astype(np.float32), (0, 0), 2.0)
+    img = np.clip(128 + 40 * base / base.std(), 0, 255).astype(np.uint8)
+    rgb = np.dstack([img] * 3)
+    deg = degrade_image(rgb, blur=1.2, shift=(0.7, 0.5), jpeg=70)
+    other = np.dstack([np.clip(128 + 40 * cv2.GaussianBlur(np.random.default_rng(9).normal(0, 1, (160, 160)).astype(np.float32), (0, 0), 2.0) / 0.5, 0, 255).astype(np.uint8)] * 3)
+    region = np.zeros((160, 160), bool)
+    region[30:130, 30:130] = True
+    lb = img.astype(np.float32)
+    fine = structure_zncc(lb, deg[..., 0].astype(np.float32), region, 5.0)
+    ms = multiscale_zncc(lb, deg[..., 0].astype(np.float32), region, 5.0, (1, 2))
+    diff = multiscale_zncc(lb, other[..., 0].astype(np.float32), region, 5.0, (1, 2))
+    assert ms > fine and ms > 0.85 and diff < 0.4, (fine, ms, diff)
+
+
+def test_light_cochange_is_na_when_untestable_and_scored_when_testable(pair):
+    from src.critics.world import LightCoChangeCritic
+
+    c = crit(LightCoChangeCritic)
+    pasted, relit = pair
+    assert c.evaluate(pasted).score is not None and c.evaluate(relit).score > c.evaluate(pasted).score
+    same, _ = make_scene("river")
+    assert c.evaluate(context(same)).score is None  # n/a, not a free 1.0
+
+
+def test_light_harmony_default_is_the_validated_mismatch_score(pair):
+    lh = LightHarmonyCritic(**CFG["critics"]["light_harmony"])
+    r = lh.evaluate(pair[0])
+    assert r.score == pytest.approx(r.evidence["mismatch_score"])  # no co-change factor by default
+
+
+def test_excluded_critics_never_change_the_score():
+    from src.scoring import GatedGeometricAggregator
+
+    cfg = {"aggregation": {"exclude": ["light_cochange"], "branch_reduce": {"world": "softmin2"}}}
+    base = {"w1": CriticResult("w1", "world", 0.9), "w2": CriticResult("w2", "world", 0.8)}
+    with_x = dict(base, light_cochange=CriticResult("light_cochange", "world", 0.0))
+    agg = GatedGeometricAggregator(cfg)
+    assert agg.aggregate(with_x).overall == pytest.approx(agg.aggregate(base).overall)

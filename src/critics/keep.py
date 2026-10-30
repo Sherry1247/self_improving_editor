@@ -79,8 +79,38 @@ def structure_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray
     return float((xb * xa).sum() / (nb * na))
 
 
+def zncc_by_scale(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, sigma: float,
+                  scales: tuple[int, ...] = (1, 2, 4)) -> dict[int, float]:
+    """High-pass ZNCC at each downsampling factor (1 = full resolution)."""
+    out = {}
+    for k in scales:
+        if k == 1:
+            out[1] = structure_zncc(l_before, l_after, region, sigma)
+            continue
+        h, w = region.shape
+        size = (max(8, w // k), max(8, h // k))
+        lb = cv2.resize(l_before.astype(np.float32), size, interpolation=cv2.INTER_AREA)
+        la = cv2.resize(l_after.astype(np.float32), size, interpolation=cv2.INTER_AREA)
+        rg = cv2.resize(region.astype(np.float32), size, interpolation=cv2.INTER_AREA) >= 0.5
+        if rg.sum() >= 20:
+            out[k] = structure_zncc(lb, la, rg, max(1.5, sigma / k))
+    return out
+
+
+def multiscale_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, sigma: float,
+                    scales: tuple[int, ...] = (1, 2)) -> float:
+    """Mean high-pass ZNCC after downsampling by each factor in ``scales`` (1 = full resolution).
+
+    A generative editor re-encodes the whole image (VAE, sampling noise), which changes the finest pixel detail of a
+    subject that is semantically identical. Correlating only coarser bands (>= 2 px) ignores that nuisance while a
+    real change of pattern, texture or pose still lowers the score.
+    """
+    zs = list(zncc_by_scale(l_before, l_after, region, sigma, scales).values())
+    return float(np.mean(zs)) if zs else structure_zncc(l_before, l_after, region, sigma)
+
+
 def refine_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, sigma: float, max_shift: float,
-                zncc0: float) -> tuple[float, tuple[float, float]]:
+                zncc0: float, scales: tuple[int, ...] = (1,)) -> tuple[float, tuple[float, float]]:
     """Best high-pass ZNCC after a small extra translation (phase correlation, |shift| <= max_shift px).
 
     The similarity alignment comes from mask moments and is a few pixels off for non-rigid subjects (a dog that
@@ -104,7 +134,7 @@ def refine_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, s
         reg = region & ra
         if reg.sum() < 50:
             continue
-        z = structure_zncc(l_before, la, reg, sigma)
+        z = multiscale_zncc(l_before, la, reg, sigma, scales)
         if z > best:
             best, best_shift = z, (sx, sy)
     return float(best), best_shift
@@ -145,9 +175,12 @@ class AppearanceCritic(Critic):
         # --- alignment quality: appearance is only meaningful if the two subjects were actually registered
         align_iou = mask_iou(r.aligned_before_subject, ctx.after.subject_mask)
         sigma = max(2.0, self.p("highpass_frac", 0.05) * float(np.sqrt(region.sum())))
-        zncc_raw = structure_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma)
+        scales = tuple(self.p("scales", (1, 2)))
+        by_scale = zncc_by_scale(lab_b[..., 0], lab_a[..., 0], region, sigma)  # diagnostics: pick scales offline
+        zncc_fine = by_scale.get(1)
+        zncc_raw = multiscale_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma, scales)
         zncc, shift = refine_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma,
-                                  self.p("max_shift_frac", 0.08) * float(np.sqrt(region.sum())), zncc_raw)
+                                  self.p("max_shift_frac", 0.08) * float(np.sqrt(region.sum())), zncc_raw, scales)
         if align_iou < self.p("unreliable_iou", 0.5) and self.p("unreliable_policy", "na") == "na":
             # The silhouette changed so much that a pixel comparison says nothing about texture. Do NOT score
             # this as 'zero appearance': flag it, the silhouette / identity / texture critics judge the change.
@@ -161,7 +194,7 @@ class AppearanceCritic(Critic):
         chroma = float(np.exp(-chroma_d / self.p("chroma_sigma", 30.0)))
         score = structure * chroma
         issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
-        return self.result(score, issues, variant="v3", zncc=zncc, zncc_raw=zncc_raw, shift=shift,
+        return self.result(score, issues, variant="v3", zncc=zncc, zncc_raw=zncc_raw, zncc_fine=zncc_fine, zncc_by_scale=by_scale, shift=shift,
                            align_iou=float(align_iou), unreliable_alignment=False, structure=structure,
                            chroma_dist=chroma_d, chroma=chroma, normalized_dist=d, raw_dist=raw, v2_score=v2_score)
 

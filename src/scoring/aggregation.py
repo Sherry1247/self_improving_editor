@@ -26,6 +26,8 @@ class Aggregator(ABC):
         # World defaults to softmin2: one physical error (floating, pasted look) ruins realism on its own,
         # so a branch average over seven checks would hide it.
         self.reduce: dict[str, str] = acfg.get("branch_reduce", {})
+        # exploratory critics: evaluated and logged, but never part of any score
+        self.exclude: set[str] = set(acfg.get("exclude", []))
 
     @abstractmethod
     def aggregate(self, critics: dict[str, CriticResult]) -> EvaluationResult: ...
@@ -34,7 +36,7 @@ class Aggregator(ABC):
         out = {}
         for b in BRANCHES:
             items = [(c.score, self.weights.get(n, 1.0)) for n, c in critics.items()
-                     if c.branch == b and c.applicable]
+                     if c.branch == b and c.applicable and n not in self.exclude]
             wsum = sum(w for _, w in items)
             if not items or wsum <= 0:
                 continue
@@ -67,7 +69,8 @@ class WeightedSumAggregator(Aggregator):
     name = "weighted_sum"
 
     def aggregate(self, critics: dict[str, CriticResult]) -> EvaluationResult:
-        items = [(c.score, self.weights.get(n, 1.0)) for n, c in critics.items() if c.applicable]
+        items = [(c.score, self.weights.get(n, 1.0)) for n, c in critics.items()
+                 if c.applicable and n not in self.exclude]
         wsum = sum(w for _, w in items)
         overall = sum(s * w for s, w in items) / wsum if wsum else 0.0
         return EvaluationResult(critics=critics, overall=overall, branch_scores=self.branch_scores(critics),

@@ -60,8 +60,10 @@ critics:
   unchanged_bg:  {tau: 7.0, min_area_frac: 0.004, sigma: 0.08, issue_above: 0.1}   # exploratory, not enabled by default
   support:       {sigma: 0.08, issue_below: 0.5}
   contact_shadow: {issue_below: 0.4}
-  # v3 (default): v2 mismatch x co-change (subject lighting must follow the new scene); v2 = mismatch only (ablation)
-  light_harmony: {variant: v3, sigma: 18.0, floor: 0.3, follow_target: 0.25, min_bg_change: 4.0, issue_below: 0.5}
+  # v2 (default): illuminant-colour mismatch vs the real photo (validated, colour-cast AUROC 1.00). v3 multiplies in the
+  # co-change part but is NOT comparable across editors (only testable where scene lighting changed) -> ablation only.
+  light_harmony: {variant: v2, sigma: 18.0, floor: 0.3, follow_target: 0.25, min_bg_change: 4.0, issue_below: 0.5}
+  light_cochange: {follow_target: 0.25, min_bg_change: 4.0, issue_below: 0.5}   # exploratory, excluded from the aggregate
   halo:          {issue_below: 0.5}
   vlm_support:     {floor: 0.5, issue_below: 0.5}
   vlm_shadow:      {floor: 0.5, issue_below: 0.5}
@@ -71,6 +73,7 @@ critics:
   vlm_background:  {issue_below: 0.5}
 
 aggregation:
+  exclude: [light_cochange, unchanged_bg]   # exploratory critics: logged, never scored
   method: gated_geometric      # gated_geometric | weighted_sum  (weighted_sum = legacy baseline)
   # per-critic reliability weights inside each branch (later: learned from the violation suite AUROC)
   weights:

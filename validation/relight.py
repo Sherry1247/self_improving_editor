@@ -46,3 +46,18 @@ def relight_subject(img: np.ndarray, mask: np.ndarray, bg_mask: np.ndarray | Non
     soft = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), feather)[..., None] if feather > 0 else mask[..., None].astype(np.float32)
     soft = np.maximum(soft, mask[..., None].astype(np.float32))
     return np.clip(base * (1 - soft) + out * soft, 0, 255).round().astype(np.uint8)
+
+
+def degrade_image(img: np.ndarray, blur: float = 0.8, shift: tuple[float, float] = (0.6, 0.4), jpeg: int = 80) -> np.ndarray:
+    """Identity-preserving NUISANCE control: slight blur, sub-pixel shift and JPEG re-compression of the whole image.
+
+    It mimics what a generative editor's re-encoding does to a subject that is semantically unchanged. An appearance
+    critic must keep scoring this version about as high as the original; if it does not, its tolerance is too tight
+    (this is how the structure thresholds are calibrated without looking at which editor wins).
+    """
+    h, w = img.shape[:2]
+    out = cv2.GaussianBlur(img, (0, 0), blur) if blur > 0 else img.copy()
+    out = cv2.warpAffine(out, np.float32([[1, 0, shift[0]], [0, 1, shift[1]]]), (w, h), flags=cv2.INTER_LINEAR,
+                         borderMode=cv2.BORDER_REPLICATE)
+    ok, buf = cv2.imencode(".jpg", cv2.cvtColor(out, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, jpeg])
+    return cv2.cvtColor(cv2.imdecode(buf, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB) if ok else out
