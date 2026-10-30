@@ -6,6 +6,7 @@
 #        auroc   -> experiments/critic_auroc.py                  (all samples)
 #        rescore -> experiments/rescore.py on rescore_*.tar.gz  (built by chtc/pack_rescore.sh)
 #        covtest -> experiments/covariance_test.py (pasted vs re-lit subject; same input bundle as rescore)
+#        repair  -> experiments/region_repair.py (contact/boundary local repair ablation; needs sdxl_inpaint)
 #        residue -> experiments/old_scene_residue_check.py (unchanged old-scene blobs + overlay panels; same bundle)
 # env:   EDITOR=ip2p|compositing|qwen_edit (default ip2p), HF_TOKEN optional
 set -euo pipefail
@@ -32,6 +33,7 @@ PY="$SCRATCH/env/bin/python"
 "$PY" -c "import torch; print('[job] torch', torch.__version__, 'cuda', torch.cuda.is_available())"
 
 MODELS="grounding_dino sam2 dinov2 siglip depth vlm"
+if [ "$MODE" = "repair" ]; then MODELS="$MODELS sdxl_inpaint"; fi
 if [ "$MODE" = "loop" ] || [ "$MODE" = "check" ]; then
   case "$EDITOR" in
     compositing) MODELS="$MODELS sdxl_inpaint" ;;
@@ -46,7 +48,7 @@ case "$MODE" in
   check) "$PY" experiments/check_env.py "${OVR[@]}" "$@" | tee "check_${RUN}.txt"; mkdir -p runs/$RUN; cp "check_${RUN}.txt" runs/$RUN/ ;;
   loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
   auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
-  rescore|covtest|residue)
+  rescore|covtest|residue|repair)
     SRCS=()
     mkdir -p rescore_in
     for t in "$SCRATCH"/rescore_*.tar.gz; do tar xzf "$t" -C rescore_in; done
@@ -54,6 +56,7 @@ case "$MODE" in
     case "$MODE" in
       covtest) SCRIPT=experiments/covariance_test.py ;;
       residue) SCRIPT=experiments/old_scene_residue_check.py ;;
+      repair)  SCRIPT=experiments/region_repair.py ;;
       *)       SCRIPT=experiments/rescore.py ;;
     esac
     "$PY" "$SCRIPT" "${OVR[@]}" --name "$RUN" --src "${SRCS[@]}" "$@" ;;
