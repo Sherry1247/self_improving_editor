@@ -6,6 +6,7 @@
 #        auroc   -> experiments/critic_auroc.py                  (all samples)
 #        rescore -> experiments/rescore.py on rescore_*.tar.gz  (built by chtc/pack_rescore.sh)
 #        covtest -> experiments/covariance_test.py (pasted vs re-lit subject; same input bundle as rescore)
+#        residue -> experiments/old_scene_residue_check.py (unchanged old-scene blobs + overlay panels; same bundle)
 # env:   EDITOR=ip2p|compositing|qwen_edit (default ip2p), HF_TOKEN optional
 set -euo pipefail
 
@@ -45,12 +46,16 @@ case "$MODE" in
   check) "$PY" experiments/check_env.py "${OVR[@]}" "$@" | tee "check_${RUN}.txt"; mkdir -p runs/$RUN; cp "check_${RUN}.txt" runs/$RUN/ ;;
   loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
   auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
-  rescore|covtest)
+  rescore|covtest|residue)
     SRCS=()
     mkdir -p rescore_in
     for t in "$SCRATCH"/rescore_*.tar.gz; do tar xzf "$t" -C rescore_in; done
     for d in rescore_in/runs/*/; do SRCS+=("$d"); done
-    if [ "$MODE" = "covtest" ]; then SCRIPT=experiments/covariance_test.py; else SCRIPT=experiments/rescore.py; fi
+    case "$MODE" in
+      covtest) SCRIPT=experiments/covariance_test.py ;;
+      residue) SCRIPT=experiments/old_scene_residue_check.py ;;
+      *)       SCRIPT=experiments/rescore.py ;;
+    esac
     "$PY" "$SCRIPT" "${OVR[@]}" --name "$RUN" --src "${SRCS[@]}" "$@" ;;
   *) echo "unknown mode $MODE"; exit 2 ;;
 esac

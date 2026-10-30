@@ -48,3 +48,33 @@
 * 阈值、尺度只能在 dev（`_01`、`_02`）上用 `degraded` 对照标定，`_03`（test）只报告。
 * 不能为了让 qwen 排在前面而调 critic。标定依据只能是构造性对照（null、degraded、relit）。
 * 在没有人工偏好之前，不对“哪个编辑器更好”下结论。
+
+## 5. 修订后的结果（`rescored_v3e`、`covtest_v3e`，代码 4bdd82d）
+
+**噪声下限（NULL：同样的 Lab 往返、强度 0）**：overall 最大 0.020，world 最大 0.057；VLM critic 均值抖动 0.004–0.013，个别任务最大 0.12
+（`vlm_lighting` 0.124、`vlm_integration` 0.117）。所以 VLM critic 在 pasted 与 relit 之间 1–2 个百分点的差异在噪声范围内，不能当证据。
+
+**容忍度（degraded：模糊 + 亚像素位移 + JPEG，身份不变）**：comp 的 appearance 1.000 → 0.915（ZNCC 尺度 1/2/4：0.914/0.952/0.979），
+texture、identity 基本不变；qwen 的 appearance 0.557 → 0.550。**因此上一节结论 5 需要修正**：qwen 的 appearance 偏低不是被重新编码的像素噪声造成的——
+qwen 在粗尺度上的结构相关也只有 0.62（尺度 4），对退化几乎不敏感。更合理的解读是 qwen 确实改变了主体的结构（姿态、细节），与看图一致。
+appearance v3 的容忍度（scales=(1,2)）不需要再放宽。
+
+**relit 与 pasted（默认 critic）**：appearance 不惩罚重新打光（qwen 0.602 → 0.602）；默认的 `light_harmony`（v2 失配分）轻微偏向 relit（+0.02）；
+`world` 持平或略降（comp dev 0.819 → 0.796，qwen dev 0.802 → 0.784），因此**不能说 relit 更好**。探索性的 `light_cochange` 在可检验时强烈偏向 relit
+（comp 0.22 → 0.60），但可检验比例 comp 17–20 %、qwen 83 %。
+
+**排序（light_harmony 回到 v2 后，90 任务）**：
+
+| | comp | qwen | qwen 赢 |
+|---|---|---|---|
+| 总分 | 0.914 | 0.849 | 22/90（v3d 是 14/90，v2 是 15/90） |
+| keep | 0.985 | 0.792 | 0/90 |
+| follow | 0.953 | 0.987 | 77/90 |
+| world | 0.820 | 0.809 | 41/90（dev 0.822 对 0.803，test 0.816 对 0.821） |
+| follow × world（去掉 keep） | 0.882 | 0.890 | 48/90 |
+
+comp 的领先**完全来自 keep**；去掉 keep 后两者打平，world 基本持平。这支持“主体保持与物理耦合是一对权衡”，不是“critic 偏爱复制粘贴”。
+
+**旧场景残留（`unchanged_bg`，探索性）**：comp 反而更多——背景里与原图几乎相同的大块区域占比均值 comp 0.106 对 qwen 0.028，超过 10 % 的任务 33 对 9。
+“qwen 保留栏杆”是个别现象，不是普遍现象；且 comp 的高值需要目视确认（可能是合理保留的背景，也可能是 inpainting 没改），先不进评分。
+下一步：`MODE=residue` 生成叠加图。
