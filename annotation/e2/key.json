@@ -1,0 +1,1399 @@
+{
+ "pair_runs": [
+  "comp_v2",
+  "qwen"
+ ],
+ "weak_run": "ip2p_v2",
+ "items": {
+  "sd82c07": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_beach"
+  },
+  "sc2094c": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_city"
+  },
+  "s6baa94": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_forest"
+  },
+  "s42485e": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_indoor"
+  },
+  "s82e2e6": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_mountain"
+  },
+  "s67a9c3": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_01__to_snow"
+  },
+  "sc8a706": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_beach"
+  },
+  "s4da5e7": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_city"
+  },
+  "s7a0242": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_forest"
+  },
+  "s955886": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_indoor"
+  },
+  "se87a16": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_mountain"
+  },
+  "s813328": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_snow"
+  },
+  "s482686": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_beach"
+  },
+  "sc17c62": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_city"
+  },
+  "s9e4d6e": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_forest"
+  },
+  "s40212e": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_indoor"
+  },
+  "se8e521": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_mountain"
+  },
+  "sfb97d4": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_03__to_snow"
+  },
+  "scf6a65": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_beach"
+  },
+  "se6f459": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_city"
+  },
+  "s4f65d4": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_forest"
+  },
+  "sbad640": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_indoor"
+  },
+  "se61a44": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_river"
+  },
+  "saf1992": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_01__to_snow"
+  },
+  "s78de58": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_beach"
+  },
+  "s19c78d": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_city"
+  },
+  "s6f25e2": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_forest"
+  },
+  "s9c6316": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_indoor"
+  },
+  "se9bb17": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_river"
+  },
+  "sf77383": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_02__to_snow"
+  },
+  "s7a1d50": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_beach"
+  },
+  "sdd84f3": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_city"
+  },
+  "s42af9f": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_forest"
+  },
+  "sce164d": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_indoor"
+  },
+  "s8c778e": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_river"
+  },
+  "s03983c": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_snow"
+  },
+  "sb83e90": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_beach"
+  },
+  "s66194c": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_city"
+  },
+  "sd3290a": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_forest"
+  },
+  "sab0c16": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_indoor"
+  },
+  "s004ae5": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_mountain"
+  },
+  "s7e5b1e": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_01__to_snow"
+  },
+  "sde1b37": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_beach"
+  },
+  "s3e70f1": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_city"
+  },
+  "s534097": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_forest"
+  },
+  "sded733": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_indoor"
+  },
+  "s30e9c5": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_mountain"
+  },
+  "s914862": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_02__to_snow"
+  },
+  "s3d15ee": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_beach"
+  },
+  "sf7b0b7": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_city"
+  },
+  "scd9d2b": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_forest"
+  },
+  "s72ae22": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_indoor"
+  },
+  "s149818": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_mountain"
+  },
+  "s51ef19": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_snow"
+  },
+  "s820865": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_beach"
+  },
+  "seece32": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_city"
+  },
+  "s1beb37": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_forest"
+  },
+  "s8d1fd9": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_indoor"
+  },
+  "sb4e135": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_river"
+  },
+  "s8c2516": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_01__to_snow"
+  },
+  "sd080e6": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_beach"
+  },
+  "s8a5006": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_city"
+  },
+  "sf6be1f": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_forest"
+  },
+  "s9a6a5f": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_indoor"
+  },
+  "s966e12": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_river"
+  },
+  "s71eacd": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_02__to_snow"
+  },
+  "s98a641": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_beach"
+  },
+  "s6288e1": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_city"
+  },
+  "s935ddd": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_forest"
+  },
+  "s4a5308": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_indoor"
+  },
+  "s307bf3": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_river"
+  },
+  "s2fcd81": {
+   "run": "comp_v2",
+   "task": "dog_sit_mountain_03__to_snow"
+  },
+  "s9cdeb3": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_beach"
+  },
+  "sa81ad4": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_city"
+  },
+  "s79fdef": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_forest"
+  },
+  "s16feba": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_indoor"
+  },
+  "sc1f254": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_mountain"
+  },
+  "se07405": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_snow"
+  },
+  "sec62b2": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_beach"
+  },
+  "sd7ab79": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_city"
+  },
+  "se5eeac": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_forest"
+  },
+  "sec4f21": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_indoor"
+  },
+  "s8a64c1": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_mountain"
+  },
+  "s642bfa": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_02__to_snow"
+  },
+  "sb48d73": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_beach"
+  },
+  "s468ff5": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_city"
+  },
+  "scfc6e6": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_forest"
+  },
+  "sd977e9": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_indoor"
+  },
+  "se52146": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_mountain"
+  },
+  "s96fd35": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_03__to_snow"
+  },
+  "sf323ca": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_beach"
+  },
+  "s9466e4": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_city"
+  },
+  "s73581a": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_forest"
+  },
+  "sa905d7": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_indoor"
+  },
+  "sff0ac0": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_mountain"
+  },
+  "seabca8": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_snow"
+  },
+  "scb175a": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_beach"
+  },
+  "s151665": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_city"
+  },
+  "s9cdf5a": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_forest"
+  },
+  "s7c879b": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_indoor"
+  },
+  "sa15156": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_mountain"
+  },
+  "sd85701": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_snow"
+  },
+  "s3e3795": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_beach"
+  },
+  "sbb42e0": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_city"
+  },
+  "s1dfc83": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_forest"
+  },
+  "s38701a": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_indoor"
+  },
+  "scb69ca": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_mountain"
+  },
+  "s552116": {
+   "run": "qwen",
+   "task": "adult_sit_river_03__to_snow"
+  },
+  "sd0dfae": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_beach"
+  },
+  "s19c16a": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_city"
+  },
+  "s2577bf": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_forest"
+  },
+  "sb29a8b": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_indoor"
+  },
+  "s0b9475": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_river"
+  },
+  "s92e8e2": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_snow"
+  },
+  "se8f6cf": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_beach"
+  },
+  "s88c132": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_city"
+  },
+  "sae3b16": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_forest"
+  },
+  "s06d599": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_indoor"
+  },
+  "sa28f5a": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_river"
+  },
+  "s9b38fe": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_snow"
+  },
+  "s9371a7": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_beach"
+  },
+  "s64264c": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_city"
+  },
+  "s5ec17d": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_forest"
+  },
+  "sfb0323": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_indoor"
+  },
+  "s0950fd": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_river"
+  },
+  "s0589f8": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_03__to_snow"
+  },
+  "sf60625": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_beach"
+  },
+  "s2f5a52": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_city"
+  },
+  "s1fb797": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_forest"
+  },
+  "s35e857": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_indoor"
+  },
+  "sccfdba": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_mountain"
+  },
+  "sefdd35": {
+   "run": "qwen",
+   "task": "adult_stand_river_01__to_snow"
+  },
+  "s05d514": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_beach"
+  },
+  "s6cf55b": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_city"
+  },
+  "s19fbeb": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_forest"
+  },
+  "s428a1c": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_indoor"
+  },
+  "s388844": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_mountain"
+  },
+  "sa59cec": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_snow"
+  },
+  "s59acdd": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_beach"
+  },
+  "s2e2950": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_city"
+  },
+  "s80ee52": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_forest"
+  },
+  "s0a14b9": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_indoor"
+  },
+  "s19d5f9": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_mountain"
+  },
+  "sfcfcfa": {
+   "run": "qwen",
+   "task": "adult_stand_river_03__to_snow"
+  },
+  "s3308fb": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_beach"
+  },
+  "s5bca47": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_city"
+  },
+  "sbb4a06": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_forest"
+  },
+  "sd69c91": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_indoor"
+  },
+  "seb21a3": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_river"
+  },
+  "s2b5f69": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_01__to_snow"
+  },
+  "sac322c": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_beach"
+  },
+  "sf76fbf": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_city"
+  },
+  "s0edc6d": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_forest"
+  },
+  "sad1b8f": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_indoor"
+  },
+  "sd86dbf": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_river"
+  },
+  "s57a1cb": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_02__to_snow"
+  },
+  "s402d0b": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_beach"
+  },
+  "s98c752": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_city"
+  },
+  "s713b7e": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_forest"
+  },
+  "s2cc0f8": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_indoor"
+  },
+  "s78bc71": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_river"
+  },
+  "s68ef8f": {
+   "run": "qwen",
+   "task": "dog_sit_mountain_03__to_snow"
+  },
+  "s91b15f": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_beach"
+  },
+  "s82339e": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_city"
+  },
+  "s4fbaec": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_forest"
+  },
+  "s5b6e4a": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_indoor"
+  },
+  "sd670f6": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_mountain"
+  },
+  "s403d1f": {
+   "run": "qwen",
+   "task": "dog_sit_river_01__to_snow"
+  },
+  "s8f837e": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_beach"
+  },
+  "s032f06": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_city"
+  },
+  "sbdd7d1": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_forest"
+  },
+  "s55fea0": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_indoor"
+  },
+  "s0bb2c3": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_mountain"
+  },
+  "s47e7f5": {
+   "run": "qwen",
+   "task": "dog_sit_river_02__to_snow"
+  },
+  "s3d792f": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_beach"
+  },
+  "sf40048": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_city"
+  },
+  "s5a2b74": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_forest"
+  },
+  "s49b25d": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_indoor"
+  },
+  "s5bf49c": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_mountain"
+  },
+  "sf2686b": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_snow"
+  },
+  "sd5e73e": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_03__to_mountain"
+  },
+  "s4c9a0a": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_01__to_indoor"
+  },
+  "s1bd094": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_03__to_forest"
+  },
+  "s8f928d": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_01__to_mountain"
+  },
+  "s7b2e1b": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_02__to_beach"
+  },
+  "s564ae9": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_01__to_city"
+  },
+  "scc417e": {
+   "run": "ip2p_v2",
+   "task": "adult_sit_river_02__to_forest"
+  },
+  "scff4c5": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_02__to_beach"
+  },
+  "s1fd3c0": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_01__to_city"
+  },
+  "s1db2b4": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_01__to_snow"
+  },
+  "s7f6b87": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_beach"
+  },
+  "s09aedb": {
+   "run": "ip2p_v2",
+   "task": "adult_sit_river_03__to_city"
+  },
+  "s55c7ed": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_01__to_indoor"
+  },
+  "safe679": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_forest"
+  },
+  "s27d99a": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_01__to_city"
+  },
+  "s2aa36c": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_03__to_city"
+  },
+  "s90823e": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_city"
+  },
+  "sce5dc8": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_03__to_beach"
+  },
+  "sfdd2ed": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_02__to_forest"
+  },
+  "s164081": {
+   "run": "ip2p_v2",
+   "task": "adult_sit_river_03__to_forest"
+  },
+  "sceca2e": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_03__to_forest"
+  },
+  "s32b2c4": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_03__to_indoor"
+  },
+  "s38974d": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_02__to_beach"
+  },
+  "s628308": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_03__to_city"
+  },
+  "s191b8a": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_river"
+  },
+  "s8e751e": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_03__to_mountain"
+  },
+  "s4a31b2": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_02__to_city"
+  },
+  "seb8f20": {
+   "run": "ip2p_v2",
+   "task": "adult_sit_river_01__to_indoor"
+  },
+  "sc9cd4a": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_02__to_city"
+  },
+  "sb6e355": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_river_02__to_indoor"
+  },
+  "p379ded": {
+   "task": "adult_sit_river_01__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p156af4": {
+   "task": "adult_sit_river_01__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p385af4": {
+   "task": "adult_sit_river_01__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p95d180": {
+   "task": "adult_sit_river_01__to_indoor",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p6e6480": {
+   "task": "adult_sit_river_01__to_mountain",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p5bc7fd": {
+   "task": "adult_sit_river_01__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p1058fe": {
+   "task": "adult_sit_river_02__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pe72bb5": {
+   "task": "adult_sit_river_02__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pc09fcd": {
+   "task": "adult_sit_river_02__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p1e70e7": {
+   "task": "adult_sit_river_02__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p65e049": {
+   "task": "adult_sit_river_02__to_mountain",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p350d27": {
+   "task": "adult_sit_river_02__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pff3e0b": {
+   "task": "adult_sit_river_03__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p9f9821": {
+   "task": "adult_sit_river_03__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p1ac902": {
+   "task": "adult_sit_river_03__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p755a3a": {
+   "task": "adult_sit_river_03__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p5c9493": {
+   "task": "adult_sit_river_03__to_mountain",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p1ad0a6": {
+   "task": "adult_sit_river_03__to_snow",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p25fdac": {
+   "task": "adult_stand_mountain_01__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pa36bcb": {
+   "task": "adult_stand_mountain_01__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pe0ae1a": {
+   "task": "adult_stand_mountain_01__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pade7ce": {
+   "task": "adult_stand_mountain_01__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pd56273": {
+   "task": "adult_stand_mountain_01__to_river",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pff88ec": {
+   "task": "adult_stand_mountain_01__to_snow",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pa2939b": {
+   "task": "adult_stand_mountain_02__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p8af589": {
+   "task": "adult_stand_mountain_02__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p027c01": {
+   "task": "adult_stand_mountain_02__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pb4a1ca": {
+   "task": "adult_stand_mountain_02__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pd17034": {
+   "task": "adult_stand_mountain_02__to_river",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p091472": {
+   "task": "adult_stand_mountain_02__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pdfde22": {
+   "task": "adult_stand_mountain_03__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p9a431f": {
+   "task": "adult_stand_mountain_03__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pd7a328": {
+   "task": "adult_stand_mountain_03__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p953c17": {
+   "task": "adult_stand_mountain_03__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pb7d779": {
+   "task": "adult_stand_mountain_03__to_river",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p10fce9": {
+   "task": "adult_stand_mountain_03__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p843b2a": {
+   "task": "adult_stand_river_01__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p10fc9e": {
+   "task": "adult_stand_river_01__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p216810": {
+   "task": "adult_stand_river_01__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p4cea2d": {
+   "task": "adult_stand_river_01__to_indoor",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pc2472f": {
+   "task": "adult_stand_river_01__to_mountain",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p54a1d5": {
+   "task": "adult_stand_river_01__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pccf719": {
+   "task": "adult_stand_river_02__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pde62d4": {
+   "task": "adult_stand_river_02__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pf7f60e": {
+   "task": "adult_stand_river_02__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p8147a8": {
+   "task": "adult_stand_river_02__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pe6addd": {
+   "task": "adult_stand_river_02__to_mountain",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p92e94e": {
+   "task": "adult_stand_river_02__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "padb6da": {
+   "task": "adult_stand_river_03__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pbf391f": {
+   "task": "adult_stand_river_03__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pe7e13e": {
+   "task": "adult_stand_river_03__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p4a276d": {
+   "task": "adult_stand_river_03__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pd360da": {
+   "task": "adult_stand_river_03__to_mountain",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pd87229": {
+   "task": "adult_stand_river_03__to_snow",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p9b8086": {
+   "task": "dog_sit_mountain_01__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pd9efe2": {
+   "task": "dog_sit_mountain_01__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pa83023": {
+   "task": "dog_sit_mountain_01__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pbda17d": {
+   "task": "dog_sit_mountain_01__to_indoor",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p4d6cd7": {
+   "task": "dog_sit_mountain_01__to_river",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p552ae5": {
+   "task": "dog_sit_mountain_01__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p7e56ac": {
+   "task": "dog_sit_mountain_02__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pf164f9": {
+   "task": "dog_sit_mountain_02__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pc5c142": {
+   "task": "dog_sit_mountain_02__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p62584a": {
+   "task": "dog_sit_mountain_02__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p0ff030": {
+   "task": "dog_sit_mountain_02__to_river",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pa41795": {
+   "task": "dog_sit_mountain_02__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p3d2bf0": {
+   "task": "dog_sit_mountain_03__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pbabd47": {
+   "task": "dog_sit_mountain_03__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p0e3705": {
+   "task": "dog_sit_mountain_03__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p7b3878": {
+   "task": "dog_sit_mountain_03__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p241257": {
+   "task": "dog_sit_mountain_03__to_river",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pe3d484": {
+   "task": "dog_sit_mountain_03__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pac6d5d": {
+   "task": "dog_sit_river_01__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pcf6f11": {
+   "task": "dog_sit_river_01__to_city",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p69407b": {
+   "task": "dog_sit_river_01__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p9c9d03": {
+   "task": "dog_sit_river_01__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p62fda8": {
+   "task": "dog_sit_river_01__to_mountain",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p0c0a59": {
+   "task": "dog_sit_river_01__to_snow",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p788c31": {
+   "task": "dog_sit_river_02__to_beach",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p052daa": {
+   "task": "dog_sit_river_02__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p992a34": {
+   "task": "dog_sit_river_02__to_forest",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pa14578": {
+   "task": "dog_sit_river_02__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p1af478": {
+   "task": "dog_sit_river_02__to_mountain",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p31e9ca": {
+   "task": "dog_sit_river_02__to_snow",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pc88e03": {
+   "task": "dog_sit_river_03__to_beach",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p1c6a4b": {
+   "task": "dog_sit_river_03__to_city",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "p9c30ce": {
+   "task": "dog_sit_river_03__to_forest",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "p9d44c9": {
+   "task": "dog_sit_river_03__to_indoor",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "pa68558": {
+   "task": "dog_sit_river_03__to_mountain",
+   "A": "qwen",
+   "B": "comp_v2"
+  },
+  "pf83032": {
+   "task": "dog_sit_river_03__to_snow",
+   "A": "comp_v2",
+   "B": "qwen"
+  },
+  "sa1cba1": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_03__to_indoor",
+   "repeat_of": "s32b2c4"
+  },
+  "s134974": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_forest",
+   "repeat_of": "s42af9f"
+  },
+  "sf4dd05": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_indoor",
+   "repeat_of": "s7c879b"
+  },
+  "s0b6d96": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_river",
+   "repeat_of": "s191b8a"
+  },
+  "se6e4b8": {
+   "run": "comp_v2",
+   "task": "dog_sit_river_01__to_indoor",
+   "repeat_of": "s16feba"
+  },
+  "sef2d9a": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_beach",
+   "repeat_of": "s7f6b87"
+  },
+  "s0a3c2c": {
+   "run": "qwen",
+   "task": "dog_sit_river_03__to_beach",
+   "repeat_of": "s3d792f"
+  },
+  "s7c7550": {
+   "run": "ip2p_v2",
+   "task": "adult_sit_river_01__to_indoor",
+   "repeat_of": "seb8f20"
+  },
+  "s4160ff": {
+   "run": "comp_v2",
+   "task": "adult_stand_mountain_03__to_city",
+   "repeat_of": "sdd84f3"
+  },
+  "se6ac9d": {
+   "run": "qwen",
+   "task": "adult_stand_river_02__to_beach",
+   "repeat_of": "s05d514"
+  },
+  "s06d2ed": {
+   "run": "comp_v2",
+   "task": "adult_stand_river_03__to_beach",
+   "repeat_of": "s3d15ee"
+  },
+  "sf1dd50": {
+   "run": "comp_v2",
+   "task": "adult_sit_river_02__to_indoor",
+   "repeat_of": "s955886"
+  },
+  "s8522dc": {
+   "run": "ip2p_v2",
+   "task": "dog_sit_mountain_03__to_forest",
+   "repeat_of": "sceca2e"
+  },
+  "saaa079": {
+   "run": "qwen",
+   "task": "adult_sit_river_02__to_mountain",
+   "repeat_of": "sa15156"
+  },
+  "s91bacf": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_01__to_snow",
+   "repeat_of": "s92e8e2"
+  },
+  "s926146": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_snow",
+   "repeat_of": "seabca8"
+  },
+  "se0397e": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_mountain_03__to_forest",
+   "repeat_of": "safe679"
+  },
+  "s374a6c": {
+   "run": "qwen",
+   "task": "adult_stand_mountain_02__to_forest",
+   "repeat_of": "sae3b16"
+  },
+  "s3acaaf": {
+   "run": "qwen",
+   "task": "adult_sit_river_01__to_city",
+   "repeat_of": "s9466e4"
+  },
+  "s17ee0e": {
+   "run": "ip2p_v2",
+   "task": "adult_stand_river_02__to_beach",
+   "repeat_of": "s38974d"
+  }
+ }
+}
