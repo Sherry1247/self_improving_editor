@@ -160,6 +160,7 @@ class LightHarmonyCritic(Critic):
         mismatch_score = float(np.exp(-excess / self.p("sigma", 18.0)))
         ev = dict(mismatch_after=m_a, mismatch_before=m_b, excess=excess, mismatch_score=mismatch_score)
         score = mismatch_score
+        ev["cochange_tested"] = False  # becomes True only if the scene lighting changed enough to test it
         if self.p("variant", "v3") == "v3" and ctx.regions_before is not None:
             va = _illum_vectors(ctx.after.image, ctx.after.subject_mask, ctx.regions.background)
             vb = _illum_vectors(ctx.before.image, ctx.before.subject_mask, ctx.regions_before.background)
@@ -180,9 +181,11 @@ class LightHarmonyCritic(Critic):
                     cov = ramp(follow, 0.0, self.p("follow_target", 0.25))
                     floor = self.p("floor", 0.3)
                     score = mismatch_score * (floor + (1.0 - floor) * cov)
-                    ev.update(follow=follow, follow_parts=parts, cochange=cov)
+                    ev.update(follow=follow, follow_parts=parts, cochange=cov, cochange_tested=True)
                 else:
-                    ev["cochange"] = None  # scene lighting did not change: nothing for the subject to follow
+                    # scene lighting barely changed: the co-change part cannot be tested. The score below is the
+                    # v2 mismatch score ONLY and must not be read as "lighting verified" (cochange_tested=False).
+                    ev["cochange"] = None
         issues = [IssueType.LIGHT_MISMATCH] if score < self.p("issue_below", 0.5) else []
         return self.result(score, issues, **ev)
 

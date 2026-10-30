@@ -53,10 +53,11 @@ critics:
   bg_changed:    {catastrophic_below: 0.22, lo: 0.22, hi: 0.5}   # gate AND graded follow-branch score
   silhouette:    {issue_below: 0.75}
   # v3 (default): structure-only appearance (high-pass ZNCC) + low-weight chroma; v2 = old Lab distance (ablation)
-  appearance:    {variant: v3, sigma: 20.0, zncc_lo: 0.2, zncc_hi: 0.8, chroma_sigma: 30.0, issue_below: 0.4}
+  appearance:    {variant: v3, sigma: 20.0, zncc_lo: 0.2, zncc_hi: 0.8, chroma_sigma: 30.0, unreliable_iou: 0.5, unreliable_policy: na, max_shift_frac: 0.08, issue_below: 0.4}
   texture:       {lo: 0.4, hi: 0.85, issue_below: 0.6}
   bg_semantic:   {issue_below: 0.5, catastrophic_if_source: true}   # still the source scene = restyle, not replacement
   old_bg_residue: {issue_above: 0.3}
+  unchanged_bg:  {tau: 7.0, min_area_frac: 0.004, sigma: 0.08, issue_above: 0.1}   # exploratory, not enabled by default
   support:       {sigma: 0.08, issue_below: 0.5}
   contact_shadow: {issue_below: 0.4}
   # v3 (default): v2 mismatch x co-change (subject lighting must follow the new scene); v2 = mismatch only (ablation)

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import cv2
+import numpy as np
+
 from src.critics.base import Critic, CriticContext
 from src.types import CriticResult, IssueType
 
@@ -53,3 +56,46 @@ class OldBackgroundResidueCritic(Critic):
         ratio = frac_after / frac_before
         issues = [IssueType.OLD_BG_RESIDUE] if ratio > self.p("issue_above", 0.3) else []
         return self.result(1.0 - ratio, issues, frac_before=frac_before, frac_after=frac_after, ratio=ratio)
+
+
+def unchanged_blobs(before: np.ndarray, after: np.ndarray, region: np.ndarray, tau: float = 7.0,
+                    min_area_frac: float = 0.004) -> np.ndarray:
+    """Connected blobs inside ``region`` whose pixels are (almost) identical in before and after.
+
+    An editor that 'replaces the background' but keeps a railing, a bench or a wall pixel-for-pixel leaves
+    old-scene structure behind, which neither the semantic critic (looks at the whole picture) nor the
+    concept-residue critic (looks for water etc.) sees.
+    """
+    from src.utils.color import to_lab
+
+    d = np.linalg.norm(to_lab(after) - to_lab(before), axis=-1)
+    d = cv2.GaussianBlur(d.astype(np.float32), (0, 0), 1.5)
+    same = ((d < tau) & region).astype(np.uint8)
+    same = cv2.morphologyEx(same, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(same)
+    out = np.zeros(region.shape, bool)
+    min_area = min_area_frac * region.size
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] >= min_area:
+            out |= lab == i
+    return out
+
+
+class UnchangedBackgroundCritic(Critic):
+    """Share of the background that is a large pixel-identical copy of the BEFORE image (old scene left behind).
+
+    Exploratory / ablation (not in the default critic set): it was added after inspecting results where
+    Qwen-Image-Edit kept the original railing and bench while changing the rest of the scene.
+    """
+
+    name, branch = "unchanged_bg", "follow"
+
+    def evaluate(self, ctx: CriticContext) -> CriticResult:
+        g = ctx.regions.background & ~ctx.before.subject_mask
+        if g.sum() < 100:
+            return self.not_applicable("empty background region")
+        blobs = unchanged_blobs(ctx.before.image, ctx.after.image, g, self.p("tau", 7.0), self.p("min_area_frac", 0.004))
+        frac = float(blobs.sum() / g.sum())
+        score = float(np.exp(-frac / self.p("sigma", 0.08)))
+        issues = [IssueType.OLD_BG_RESIDUE] if frac > self.p("issue_above", 0.1) else []
+        return self.result(score, issues, blob_frac=frac, blob_px=int(blobs.sum()))

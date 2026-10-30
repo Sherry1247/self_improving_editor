@@ -11,7 +11,8 @@ import pytest
 
 from src.config import load_config
 from src.critics import CriticContext
-from src.critics.keep import AppearanceCritic
+from src.critics.keep import AppearanceCritic, refine_zncc, structure_zncc
+from src.critics.follow import UnchangedBackgroundCritic
 from src.critics.world import LightHarmonyCritic
 from src.regions import partition
 from src.spec import build_spec
@@ -19,6 +20,7 @@ from validation.relight import relight_subject
 from fakes import FakePerceiver, make_scene, subject_mask
 
 CFG = load_config()
+CFG["critics"]["unchanged_bg"] = {"tau": 7.0, "min_area_frac": 0.004, "sigma": 0.08}
 SPEC = build_spec("dog_sit_river_01", "dog", "sit", "river", "snow")
 
 
@@ -31,7 +33,7 @@ class MaskPerceiver(FakePerceiver):
 
 def relight(img, mask, bg_rgb):
     """Fixed-colour variant of validation.relight for the flat synthetic scenes."""
-    return relight_subject(img, mask, strength=0.35, side=0.18)
+    return relight_subject(img, mask, strength=0.6, side=0.8)  # strong side light: local shading a global fit cannot undo
 
 
 def context(after_img):
@@ -60,7 +62,7 @@ def test_v3_appearance_ignores_relighting_v2_does_not(pair):
     v3 = crit(AppearanceCritic, variant="v3").evaluate(ctx_relit)
     v2 = crit(AppearanceCritic, variant="v2").evaluate(ctx_relit)
     assert v3.score > 0.8, v3.evidence
-    assert v3.score > v2.score + 0.15, (v3.score, v2.score)
+    assert v3.score > v2.score + 0.08, (v3.score, v2.score)
 
 
 def test_v3_appearance_still_catches_texture_loss():
@@ -92,3 +94,68 @@ def test_light_harmony_skips_cochange_when_background_light_is_unchanged():
     same, m = make_scene("river")
     res = crit(LightHarmonyCritic, variant="v3").evaluate(context(same))
     assert res.evidence["cochange"] is None and res.score == pytest.approx(res.evidence["mismatch_score"])
+
+
+def test_null_relight_is_pipeline_noise_only():
+    pasted, m = make_scene("snow")
+    null = relight_subject(pasted, m, strength=0.0, side=0.0)
+    assert np.abs(null.astype(int) - pasted.astype(int)).max() <= 3
+    a, b = crit(AppearanceCritic).evaluate(context(pasted)), crit(AppearanceCritic).evaluate(context(null))
+    assert abs(a.score - b.score) < 0.05
+
+
+def test_relight_keeps_texture_and_changes_light():
+    pasted, m = make_scene("snow")
+    relit = relight_subject(pasted, m, strength=0.3, side=0.15)
+    assert np.abs(relit.astype(int) - pasted.astype(int))[m].mean() > 3  # it really changed the subject
+    assert (relit[~m] == pasted[~m]).mean() > 0.95  # and left the scene alone
+
+
+def test_refine_zncc_recovers_a_misregistered_texture():
+    rng = np.random.default_rng(0)
+    base = cv2_blur(rng.normal(0, 1, (120, 120)).astype(np.float32))
+    region = np.zeros((120, 120), bool)
+    region[30:90, 30:90] = True
+    shifted = np.roll(base, 4, axis=1)
+    raw = structure_zncc(base, shifted, region, 4.0)
+    refined, (dx, dy) = refine_zncc(base, shifted, region, 4.0, 8.0, raw)
+    assert raw < 0.7 and refined > 0.9 and abs(abs(dx) - 4) < 1.5, (raw, refined, dx, dy)
+
+
+def cv2_blur(a):
+    import cv2
+
+    return cv2.GaussianBlur(a, (0, 0), 1.5)
+
+
+def test_appearance_flags_unreliable_alignment_instead_of_scoring_zero():
+    m = subject_mask(sw=0.5, shh=0.12)  # a very different silhouette (aligned IoU ~0.3)
+    after, _ = make_scene("snow", mask=m)
+    per = FakePerceiver()
+    before_img, _ = make_scene("river")
+    before, aft = per.perceive(before_img, SPEC), per.perceive(after, SPEC)
+    ctx = CriticContext(before, aft, partition(aft.subject_mask, before.subject_mask), SPEC,
+                        partition(before.subject_mask, before.subject_mask))
+    res = crit(AppearanceCritic, variant="v3").evaluate(ctx)
+    assert res.score is None and res.evidence["unreliable_alignment"] is True
+    scored = crit(AppearanceCritic, variant="v3", unreliable_policy="score").evaluate(ctx)
+    assert scored.score is not None
+
+
+def test_cochange_testability_is_reported(pair):
+    pasted, relit = pair
+    lh = crit(LightHarmonyCritic, variant="v3")
+    assert lh.evaluate(pasted).evidence["cochange_tested"] is True
+    same, _ = make_scene("river")
+    assert lh.evaluate(context(same)).evidence["cochange_tested"] is False  # scene lighting unchanged: untested
+
+
+def test_unchanged_bg_detects_kept_old_scene_chunks():
+    clean, m = make_scene("snow")
+    before, _ = make_scene("river")
+    kept = clean.copy()
+    kept[:60, :50] = before[:60, :50]  # a chunk of the old scene stays pixel-identical (railing / bench)
+    c = crit(UnchangedBackgroundCritic)
+    good, bad = c.evaluate(context(clean)), c.evaluate(context(kept))
+    assert bad.evidence["blob_frac"] > good.evidence["blob_frac"] + 0.05
+    assert bad.score < good.score

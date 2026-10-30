@@ -3,7 +3,13 @@
 By construction the re-lit version is the better background replacement for lighting, and it keeps texture and
 structure. A covariance-aware critic must therefore (1) not call re-lighting subject drift and (2) not prefer the
 pasted version. Needs no human labels, so it is the first line of evidence about the 'preservation critics prefer
-copy-paste' bias (critics v2 fail it, v3 is built to pass it).
+copy-paste' bias.
+
+The operator is deliberately conservative and works in Lab: it only (a) scales luminance with a smooth
+side-light gradient and a scene-brightness gain, and (b) shifts the subject's mean chroma a little toward the
+scene's. Texture, edges and the spatial colour pattern are untouched (no blending of pixel content).
+``strength=0, side=0`` is the NULL control: it runs the same Lab round trip and feathering and must score the
+same as the input (any difference is pipeline noise, not lighting).
 """
 
 from __future__ import annotations
@@ -12,29 +18,31 @@ import cv2
 import numpy as np
 
 
-def relight_subject(img: np.ndarray, mask: np.ndarray, bg_mask: np.ndarray | None = None, strength: float = 0.3,
-                    side: float = 0.18, direction: int = 1, feather: float = 2.0) -> np.ndarray:
+def relight_subject(img: np.ndarray, mask: np.ndarray, bg_mask: np.ndarray | None = None, strength: float = 0.15,
+                    side: float = 0.10, direction: int = 1, feather: float = 2.0) -> np.ndarray:
     """Re-light the subject for the scene it now stands in.
 
-    * tint:   blend the subject colour toward the mean colour of the new background (colour adaptation);
-    * shading: a smooth gain gradient across the subject (side light), brighter on one side;
-    * brightness: gain is anchored to the background's mean luminance relative to the subject's.
-    Texture and structure are preserved (multiplicative gain + convex blend). ``direction`` = +1 / -1 flips the side.
+    * brightness: luminance gain toward the background's mean luminance (``strength`` of the gap, clipped);
+    * side light: smooth gain gradient across the subject, brighter on one side (``direction`` = +1 / -1);
+    * colour: the subject's mean (a, b) moves ``strength`` of the way toward the background's mean (a, b).
     """
-    out = img.astype(np.float32)
+    mask = mask.astype(bool)
     ys, xs = np.nonzero(mask)
     if len(xs) < 50:
         return img.copy()
-    bg = out[(~mask) if bg_mask is None else bg_mask]
-    bg_rgb = bg.mean(0) if len(bg) else np.array([128.0, 128.0, 128.0])
+    lab = cv2.cvtColor(img.astype(np.float32) / 255.0, cv2.COLOR_RGB2LAB)
+    bg = lab[(~mask) if bg_mask is None else bg_mask]
+    bg_l, bg_ab = (float(bg[:, 0].mean()), bg[:, 1:].mean(0)) if len(bg) else (50.0, np.zeros(2, np.float32))
+    sub = lab[mask]
+    s_l, s_ab = float(sub[:, 0].mean()), sub[:, 1:].mean(0)
     x01 = (xs - xs.min()) / max(1, xs.max() - xs.min())
     gain = 1.0 + side * direction * (1 - 2 * x01)
-    sub = out[mask]
-    lum_s, lum_b = float(sub.mean()), float(bg_rgb.mean())
-    scene_gain = np.clip(1.0 + 0.5 * strength * (lum_b - lum_s) / max(lum_s, 1.0), 0.8, 1.35)
-    relit = ((1 - strength) * sub + strength * bg_rgb) * (gain * scene_gain)[:, None]
-    full = out.copy()
-    full[mask] = np.clip(relit, 0, 255)
-    soft = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), feather)[..., None] if feather > 0 else mask[..., None]
-    soft = np.maximum(soft, mask[..., None].astype(np.float32)) if feather > 0 else soft
-    return np.clip(out * (1 - soft) + full * soft, 0, 255).astype(np.uint8)
+    scene_gain = float(np.clip(1.0 + strength * (bg_l - s_l) / max(s_l, 1.0), 0.85, 1.25))
+    new = lab.copy()
+    new[mask, 0] = np.clip(sub[:, 0] * gain * scene_gain, 0, 100)
+    new[mask, 1:] = sub[:, 1:] + strength * (bg_ab - s_ab)
+    out = np.clip(cv2.cvtColor(new, cv2.COLOR_LAB2RGB) * 255.0, 0, 255)
+    base = img.astype(np.float32)
+    soft = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), feather)[..., None] if feather > 0 else mask[..., None].astype(np.float32)
+    soft = np.maximum(soft, mask[..., None].astype(np.float32))
+    return np.clip(base * (1 - soft) + out * soft, 0, 255).round().astype(np.uint8)

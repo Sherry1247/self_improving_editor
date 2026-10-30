@@ -79,6 +79,37 @@ def structure_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray
     return float((xb * xa).sum() / (nb * na))
 
 
+def refine_zncc(l_before: np.ndarray, l_after: np.ndarray, region: np.ndarray, sigma: float, max_shift: float,
+                zncc0: float) -> tuple[float, tuple[float, float]]:
+    """Best high-pass ZNCC after a small extra translation (phase correlation, |shift| <= max_shift px).
+
+    The similarity alignment comes from mask moments and is a few pixels off for non-rigid subjects (a dog that
+    lowers its head); without this, a perfectly preserved texture can score ~0 just because it is misregistered.
+    Returns (zncc, (dx, dy)); (zncc0, (0, 0)) when no shift helps.
+    """
+    if max_shift < 1.0:
+        return zncc0, (0.0, 0.0)
+    hb = (l_before - _masked_blur(l_before, region, sigma)) * region
+    ha = (l_after - _masked_blur(l_after, region, sigma)) * region
+    (dx, dy), _ = cv2.phaseCorrelate(hb.astype(np.float32), ha.astype(np.float32))
+    best, best_shift = zncc0, (0.0, 0.0)
+    h, w = region.shape
+    for sx, sy in ((dx, dy), (-dx, -dy)):
+        sx, sy = float(np.clip(sx, -max_shift, max_shift)), float(np.clip(sy, -max_shift, max_shift))
+        if abs(sx) < 0.5 and abs(sy) < 0.5:
+            continue
+        m = np.float32([[1, 0, sx], [0, 1, sy]])
+        la = cv2.warpAffine(l_after.astype(np.float32), m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        ra = cv2.warpAffine(region.astype(np.uint8), m, (w, h), flags=cv2.INTER_NEAREST).astype(bool)
+        reg = region & ra
+        if reg.sum() < 50:
+            continue
+        z = structure_zncc(l_before, la, reg, sigma)
+        if z > best:
+            best, best_shift = z, (sx, sy)
+    return float(best), best_shift
+
+
 class AppearanceCritic(Critic):
     """Subject appearance preserved? (identity / texture / structure — NOT lighting).
 
@@ -111,18 +142,28 @@ class AppearanceCritic(Critic):
             issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
             return self.result(score, issues, normalized_dist=d, raw_dist=raw, variant="v2")
 
+        # --- alignment quality: appearance is only meaningful if the two subjects were actually registered
+        align_iou = mask_iou(r.aligned_before_subject, ctx.after.subject_mask)
         sigma = max(2.0, self.p("highpass_frac", 0.05) * float(np.sqrt(region.sum())))
-        zncc = structure_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma)
+        zncc_raw = structure_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma)
+        zncc, shift = refine_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma,
+                                  self.p("max_shift_frac", 0.08) * float(np.sqrt(region.sum())), zncc_raw)
+        if align_iou < self.p("unreliable_iou", 0.5) and self.p("unreliable_policy", "na") == "na":
+            # The silhouette changed so much that a pixel comparison says nothing about texture. Do NOT score
+            # this as 'zero appearance': flag it, the silhouette / identity / texture critics judge the change.
+            return self.result(None, [], variant="v3", unreliable_alignment=True, align_iou=float(align_iou),
+                               zncc=zncc, zncc_raw=zncc_raw, shift=shift)
         structure = ramp(zncc, self.p("zncc_lo", 0.2), self.p("zncc_hi", 0.8))
         # chroma: remove only the global mean shift (a cast is lighting), keep the spatial colour pattern
         ab_b, ab_a = lab_b[..., 1:], lab_a[..., 1:]
-        shift = ab_a[region].mean(0) - ab_b[region].mean(0)
-        chroma_d = float(np.linalg.norm((ab_a - shift - ab_b)[region], axis=-1).mean())
+        cshift = ab_a[region].mean(0) - ab_b[region].mean(0)
+        chroma_d = float(np.linalg.norm((ab_a - cshift - ab_b)[region], axis=-1).mean())
         chroma = float(np.exp(-chroma_d / self.p("chroma_sigma", 30.0)))
         score = structure * chroma
         issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
-        return self.result(score, issues, variant="v3", zncc=zncc, structure=structure, chroma_dist=chroma_d,
-                           chroma=chroma, normalized_dist=d, raw_dist=raw, v2_score=v2_score)
+        return self.result(score, issues, variant="v3", zncc=zncc, zncc_raw=zncc_raw, shift=shift,
+                           align_iou=float(align_iou), unreliable_alignment=False, structure=structure,
+                           chroma_dist=chroma_d, chroma=chroma, normalized_dist=d, raw_dist=raw, v2_score=v2_score)
 
 
 class TextureCritic(Critic):
