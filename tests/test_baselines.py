@@ -35,6 +35,21 @@ def test_viescore_unparsable_reply_gives_none_not_zero():
     assert r["overall"] is None and r["sc"] is None and r["pq"] is None
 
 
+def test_viescore_soft_routes_prompts_and_combines_like_viescore():
+    seen = []
+
+    def expect(images, prompt):
+        seen.append((len(images), prompt))
+        return {"follow": 0.9, "unchanged": 0.8, "natural": 0.6, "artifacts": 0.7}[
+            "follow" if "follow the instruction" in prompt else "unchanged" if "left unchanged" in prompt
+            else "natural" if "natural photograph" in prompt else "artifacts"]
+
+    r = rewards.viescore_soft(expect, "s", "e", "do it")
+    assert (r["success"], r["over_edit"], r["naturalness"], r["artifacts"]) == (0.9, 0.8, 0.6, 0.7)
+    assert r["sc"] == 0.8 and r["pq"] == 0.6 and r["overall"] == pytest.approx(math.sqrt(0.8 * 0.6))
+    assert [n for n, _ in seen] == [2, 2, 1, 1] and "do it" in seen[0][1]  # edit pair vs single-image prompts
+
+
 def test_paraphrases_cover_every_vlm_question():
     spec = build_spec("dog_sit_river_01", "dog", "sit", "river", "snow", False)
     para = variance.paraphrases(spec)

@@ -41,6 +41,31 @@ def parse_scores(text: str, n: int = 2, lo: float = 0.0, hi: float = 10.0) -> li
     return nums[:n] if len(nums) >= n else None
 
 
+SOFT_PROMPTS = {
+    "success": ('Image 1 is the original photo, image 2 is an edited result. Editing instruction: "{instruction}"\n'
+                "On a scale from 0 (worst) to 9 (best), how well does the edited image follow the instruction? "
+                "Reply with a single digit."),
+    "over_edit": ('Image 1 is the original photo, image 2 is an edited result. Editing instruction: "{instruction}"\n'
+                  "On a scale from 0 (worst) to 9 (best), how well was everything the instruction did not ask to change "
+                  "left unchanged (9 = no unwanted change)? Reply with a single digit."),
+    "naturalness": ("On a scale from 0 (worst) to 9 (best), does this image look like a natural photograph that is "
+                    "physically plausible and consistent? Reply with a single digit."),
+    "artifacts": ("On a scale from 0 (worst) to 9 (best), is this image free of visible artifacts such as distortions, "
+                  "halos, blur or cut-out edges (9 = no artifacts)? Reply with a single digit."),
+}
+
+
+def viescore_soft(expect, src, edit, instruction: str) -> dict:
+    """Same combination as ``viescore`` but each sub-score is the EXPECTED value over the digit-token probabilities
+    (``expect(images, prompt) -> float in [0, 1]``). The integer judge says "8, 9" to almost everything, so its scores tie
+    constantly; the expectation keeps the small differences the logits carry."""
+    out = {k: expect([src, edit] if k in ("success", "over_edit") else [edit], p.format(instruction=instruction))
+           for k, p in SOFT_PROMPTS.items()}
+    out["sc"], out["pq"] = min(out["success"], out["over_edit"]), min(out["naturalness"], out["artifacts"])
+    out["overall"] = math.sqrt(out["sc"] * out["pq"])
+    return out
+
+
 def viescore(judge, src, edit, instruction: str) -> dict:
     """``judge(images, prompt) -> str``. Returns the four sub-scores, SC, PQ and overall, all in [0, 1] (or None)."""
     raw_sc = judge([src, edit], SC_PROMPT.format(instruction=instruction))
@@ -65,6 +90,31 @@ class HFChatJudge:
     def __init__(self, bundle, max_side: int = 768):
         self.b = bundle
         self.max_side = max_side
+        tok = bundle.processor.tokenizer
+        self.digit_ids = [tok.encode(str(d), add_special_tokens=False)[0] for d in range(10)]
+
+    def expect(self, images, prompt: str) -> float:
+        """Expected digit (0-9) under the next-token distribution restricted to the ten digit tokens, divided by 9."""
+        import torch
+
+        imgs = []
+        for im in images:
+            im = im.copy()
+            im.thumbnail((self.max_side, self.max_side))
+            imgs.append(im)
+        content = [{"type": "image"} for _ in imgs] + [{"type": "text", "text": prompt}]
+        proc, model = self.b.processor, self.b.model
+        text = proc.apply_chat_template([{"role": "user", "content": content}], add_generation_prompt=True,
+                                        tokenize=False)
+        inputs = proc(text=[text], images=imgs, return_tensors="pt")
+        dev = next(model.parameters()).device
+        inputs = {k: (v.to(dev) if hasattr(v, "to") else v) for k, v in inputs.items()}
+        if "pixel_values" in inputs:
+            inputs["pixel_values"] = inputs["pixel_values"].to(self.b.dtype)
+        with torch.inference_mode():
+            logits = model(**inputs).logits[0, -1].float()
+        p = torch.softmax(logits[self.digit_ids], 0)
+        return float((p * torch.arange(10, device=p.device)).sum().item() / 9)
 
     def __call__(self, images, prompt: str, max_new_tokens: int = 24) -> str:
         import torch

@@ -124,3 +124,14 @@ python experiments/vlm_variance.py --report-only runs/vlmvar/variance.csv --name
 但它指向一个必须在论文里面对的问题：VLM critic 的数值对问题措辞和裁剪很敏感，直接用单一措辞的 P(Yes) 去比较 comp 与 qwen 的胜负不稳。
 按 §0 事先设定的判定（符号稳定的任务 < 80% 就不用于排序结论），这几个问题在冒烟里都没达标；是否成立要看全量（90 任务 × 2 个 run）的结果。
 可能的对策（全量结果出来后再决定，不要现在就改 critic）：把多个视角的 P(Yes) 取平均再用；或只在“视角间符号稳定”的任务上报告。
+
+### 5.1 第二轮冒烟（同日，H200）
+
+| 任务 | 结果 |
+|---|---|
+| `editreward`（修复后） | 通了，约 3 分 50 秒（下载检查点约 2 分钟）。自动补装了 `rich`；`deepspeed` 因没有 `CUDA_HOME` 装不上，但 EditReward 的 import 不需要它。3 项都有分数（color_cast 0.047、float −0.216、foreign_clean −0.750；foreign_clean 是另一张底图，不能和前两个直接比）。日志里 `rm_heads.* newly initialized` 的警告是预期的：源码先按配置建模型（打分头随机初始化），再用 `load_state_dict(..., strict=True)` 从检查点覆盖；`strict=True` 没有报错，说明打分头被加载了。`score` 取 `reward[0]`（README 写法），第二个输出作为 `dim1` 一并保存，它的含义 README 没有说明。 |
+| `viescore`，`vlm2`（InternVL3-8B） | 通了，3 项都解析成功。但三项的回复几乎相同（`8, 9`），overall 全是 0.8；Qwen 的两项也相同（0.8485）。**整数 judge 的分辨率不够，AUROC 里会大量打平。** |
+
+据此新增 `--soft`：对每个子分数读 0–9 数字 token 的概率，取期望（`scores_viescoresoft_<kind>.jsonl`，列名 `viescoresoft_vlm:overall` 等）。
+整数版保留，因为它更接近 VIEScore 的做法；两版并列报告，哪个能分开违例由数据说话，**不要事后只挑效果好的那个**。
+`--soft` 只在 CPU 上用假 judge 测过，没有在 GPU 上跑过；`vlm2` 的 P(Yes) 路径（`vlmvar` 用）也还没验证。

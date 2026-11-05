@@ -48,7 +48,9 @@ def main() -> None:
                 dims = [float(x) for x in rewards[0].flatten().tolist()]
             except Exception as e:  # keep going; a missing score is reported, not silently zero
                 score, dims = None, [f"{type(e).__name__}: {e}"]
-            f.write(json.dumps({"id": it["id"], "score": score, "raw_dims": dims}) + "\n")
+            # `score` = reward[0] as in the README; the second head is kept as `dim1` (its meaning is not documented)
+            dim1 = dims[1] if len(dims) > 1 and isinstance(dims[1], float) else None
+            f.write(json.dumps({"id": it["id"], "score": score, "dim1": dim1, "raw_dims": dims}) + "\n")
             f.flush()
             if k % 20 == 0:
                 print(f"[{k + 1}/{len(items)}] {it['id']} score={score}")
