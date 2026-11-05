@@ -56,9 +56,10 @@ def region_box(mask: np.ndarray, region: str, pad: float = 0.15) -> tuple[int, i
     return (int(max(0, x1 - px)), int(max(0, y1 - py)), int(min(w, x2 + px)), int(min(h, y2 + py)))
 
 
-def question_images(image: np.ndarray, mask: np.ndarray, region: str, max_side: int = 768) -> list[Image.Image]:
+def question_images(image: np.ndarray, mask: np.ndarray, region: str, max_side: int = 768,
+                    pad: float = 0.15) -> list[Image.Image]:
     full = Image.fromarray(image)
-    box = region_box(mask, region)
+    box = region_box(mask, region, pad)
     if box is None:
         full.thumbnail((max_side, max_side))
         return [full]

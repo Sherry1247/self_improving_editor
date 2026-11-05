@@ -7,6 +7,13 @@
 #   condor_submit chtc/job.sub MODE=loop   RUN=qwen   LIST=jobs/samples.txt EDITOR=qwen_edit GPUMEM=75000M DISK=120GB
 #   bash chtc/pack_rescore.sh ip2p comp && \
 #   condor_submit chtc/job.sub MODE=rescore RUN=rescored LIST=jobs/one.txt EXTRA_IN=,chtc/rescore_in.tar.gz
+# Reward baselines and VLM stability (scores only, no editing; scoring sets are built on the submit node, CPU only):
+#   python experiments/build_scoring_set.py --name rw_violations --violations runs/e1v2 && bash chtc/pack_rewardset.sh rw_violations
+#   condor_submit chtc/job.sub MODE=viescore   RUN=rw_vio_vie  LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz GPUMEM=24000M
+#   condor_submit chtc/job.sub MODE=viescore   RUN=rw_vio_vie2 LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz VLM_KIND=vlm2
+#   condor_submit chtc/job.sub MODE=editreward RUN=rw_vio_er   LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz GPUMEM=24000M
+#   bash chtc/pack_rescore.sh comp_v2 qwen && condor_submit chtc/job.sub MODE=vlmvar RUN=vlmvar LIST=jobs/one.txt EXTRA_IN=,chtc/rescore_in.tar.gz
+#   (same with VLM_KIND=vlm2 RUN=vlmvar2 for the second VLM; EXTRA="--limit 3" first as a smoke test)
 # One job per line of LIST (a sample id). Results come back as results/result_<RUN>_<sample>.tar.gz
 # Defaults use $(VAR:default) so that command-line assignments win
 # (a plain "RUN = smoke" line in this file would override RUN=... given to condor_submit).
@@ -15,7 +22,7 @@ universe                = container
 container_image         = docker://pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime
 executable              = chtc/run.sh
 arguments               = $(MODE:loop) $(RUN:smoke) $(sample) $(EXTRA:)
-environment             = "EDITOR=$(EDITOR:ip2p)"
+environment             = "EDITOR=$(EDITOR:ip2p) VLM_KIND=$(VLM_KIND:vlm)"
 
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT

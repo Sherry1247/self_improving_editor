@@ -112,5 +112,6 @@ LOADERS = {
     "ip2p": load_ip2p,
     "sdxl_inpaint": load_sdxl_inpaint,
     "vlm": load_vlm,
+    "vlm2": load_vlm,          # second, independently trained VLM judge (robustness of the VLM critics)
     "qwen_edit": load_qwen_edit,
 }
