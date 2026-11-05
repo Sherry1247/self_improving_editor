@@ -24,7 +24,7 @@ FIELDS = ["run", "task", "sample_id", "image", "question", "view", "p_yes"]
 
 
 def write_report(rows: list[dict], out: Path) -> None:
-    from src.baselines.variance import ranking_stability, summarise
+    from src.baselines.variance import PERTURBED, ranking_stability, summarise
 
     s = summarise(rows)
     (out / "variance_summary.json").write_text(json.dumps(s, indent=1))
@@ -34,6 +34,11 @@ def write_report(rows: list[dict], out: Path) -> None:
          "|---|---|---|---|---|---|"]
     for q, d in sorted(s["questions"].items()):
         L.append(f"| {q} | {d['n']} | {f(d['mean_std'])} | {f(d['mean_range'])} | {f(d['max_range'])} | {f(d['mean_dev_from_orig'])} |")
+    vs = [v for v in PERTURBED if v != "orig"]
+    L += ["\n## Which perturbation moves the answer most? mean |p(view) - p(orig)|\n", "| question | " + " | ".join(vs) + " |",
+          "|---|" + "---|" * len(vs)]
+    for q, d in sorted(s["views"].items()):
+        L.append(f"| {q} | " + " | ".join(f(d.get(v)) for v in vs) + " |")
     runs = sorted({r["run"] for r in rows})
     for a, b in combinations(runs, 2):
         L += [f"\n## {a} vs {b} on the best images: wins of {a} per view (sign-stable = same winner in every perturbed view)\n",

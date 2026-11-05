@@ -66,8 +66,14 @@ def summarise(rows: list[dict]) -> dict:
             per_q[q]["dev_orig"] += [abs(v[x] - v["orig"]) for x in PERTURBED if x in v and x != "orig"]
             if "orig_rep" in v:
                 floor.append(abs(v["orig_rep"] - v["orig"]))
+    per_view = defaultdict(lambda: defaultdict(list))  # question -> view -> |p_view - p_orig|
+    for (_, _, _, q), v in by.items():
+        if "orig" in v:
+            for x in PERTURBED:
+                if x != "orig" and x in v:
+                    per_view[q][x].append(abs(v[x] - v["orig"]))
     out = {"repeat_floor_max": max(floor) if floor else None, "repeat_floor_mean": st.mean(floor) if floor else None,
-           "questions": {}}
+           "views": {q: {x: st.mean(d) for x, d in vs.items()} for q, vs in per_view.items()}, "questions": {}}
     for q, d in per_q.items():
         out["questions"][q] = {"n": len(d["std"]), "mean_std": st.mean(d["std"]) if d["std"] else None,
                                "mean_range": st.mean(d["range"]) if d["range"] else None,

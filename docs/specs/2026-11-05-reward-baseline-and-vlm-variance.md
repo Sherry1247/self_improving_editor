@@ -110,3 +110,17 @@ python experiments/vlm_variance.py --report-only runs/vlmvar/variance.csv --name
 5. 我们 critic 的 E1 AUROC（`runs/e1v2/auroc.csv`）是跨样本 AUROC，没有 CI，与基线表里带 CI 的数不完全可比；
    而且其中一些 1.00（如 `appearance` 对 float / scale / sink）来自主体位置改变本身，而不是物理判断。
    并列比较前，最好用同一套 bootstrap 重算我们 critic 的 CI（`raw_scores.json` 里有逐样本分数）。
+
+## 5. 冒烟结果（2026-11-05，CHTC，每个只跑 3 项 / 3 个任务）
+
+| 任务 | 结果 |
+|---|---|
+| `viescore`（Qwen2.5-VL-7B） | 通了。3 项都解析成功，没有 None。judge 只给 0–10 的整数，分数很粗：`color_cast` 与 `float` 得到完全相同的 0.8485，`foreign_clean` 为 0.748。3 项不足以说明任何事，只说明流程可用。 |
+| `editreward` | **失败**：`ModuleNotFoundError: No module named 'fire'`（我漏装了 README 列出的依赖）。下载 4 个权重文件花了 3 分 21 秒才发现缺包。已修：补全 README 的依赖列表，用 `PIP_CONSTRAINT` 固定 transformers / trl，并在下载权重**之前**先试 import、自动补装缺失模块。`transformers==4.57.0` 被 PyPI 标记为 yanked（“setup 导致安装问题”），pip 仍然装上了。 |
+| `vlmvar`（Qwen2.5-VL-7B） | 通了。重复同一输入的差为 0（确定性，符合预期）。但**输入扰动下答案变化很大**：平均极差 shadow 0.48、surface 0.45、integration 0.44、lighting 0.21、support 0.19、background 0.11。comp vs qwen 的胜负会随视角翻转（如 shadow：原措辞 comp 1 胜 2 负，para2 变成 3 胜 0 负）；符号在所有视角下都不变的任务只有 1/3（background、integration、shadow）。 |
+| `vlm2`（InternVL3） | 还没有冒烟。 |
+
+**vlmvar 冒烟的限制**：`--limit 3` 取到的是同一张源图（`adult_sit_river_01`）的 3 个目标，等于 1 个聚类，每个问题只有 12 行。这是信号，不是结论。
+但它指向一个必须在论文里面对的问题：VLM critic 的数值对问题措辞和裁剪很敏感，直接用单一措辞的 P(Yes) 去比较 comp 与 qwen 的胜负不稳。
+按 §0 事先设定的判定（符号稳定的任务 < 80% 就不用于排序结论），这几个问题在冒烟里都没达标；是否成立要看全量（90 任务 × 2 个 run）的结果。
+可能的对策（全量结果出来后再决定，不要现在就改 critic）：把多个视角的 P(Yes) 取平均再用；或只在“视角间符号稳定”的任务上报告。

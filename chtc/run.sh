@@ -35,8 +35,13 @@ if [ "$MODE" = "editreward" ]; then
   ER="$SCRATCH/er"; mkdir -p "$ER" setin "runs/$RUN"
   python -m venv --system-site-packages "$SCRATCH/env_er"
   PYE="$SCRATCH/env_er/bin/python"
-  "$PYE" -m pip install --quiet "transformers==4.57.0" "trl==0.8.6" peft accelerate qwen-vl-utils omegaconf einops timm av \
-      regex safetensors sentencepiece huggingface_hub pillow "brotli>=1.2.0"
+  # keep the two pins no matter what else gets installed
+  printf 'transformers==4.57.0\ntrl==0.8.6\n' > "$ER/constraints.txt"
+  export PIP_CONSTRAINT="$ER/constraints.txt"
+  "$PYE" -m pip install --quiet "transformers==4.57.0" "trl==0.8.6" datasets pillow openai megfile sentencepiece fire \
+      omegaconf matplotlib peft tensorboard scipy accelerate requests packaging pandas opencv-python-headless einops timm \
+      huggingface_hub qwen-vl-utils av regex safetensors tqdm "brotli>=1.2.0"
+  "$PYE" -m pip install --quiet deepspeed || echo "[job] deepspeed not installed (only matters if EditReward imports it)"
   if command -v git >/dev/null 2>&1; then
     git clone --depth 1 https://github.com/TIGER-AI-Lab/EditReward "$ER/EditReward"
   else
@@ -50,6 +55,15 @@ import os; os.rename(os.path.join(dest, "EditReward-main"), os.path.join(dest, "
 PYDL
   fi
   "$PYE" -m pip install --quiet --no-deps -e "$ER/EditReward"
+  # fail FAST (before the multi-minute checkpoint download): import it, and pip-install whatever the import reports missing
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if out=$("$PYE" -c "from EditReward import EditRewardInferencer" 2>&1); then echo "[job] EditReward imports OK"; break; fi
+    mod=$(echo "$out" | sed -n "s/.*No module named '\([^'.]*\).*/\1/p" | tail -n1)
+    case "$mod" in cv2) mod=opencv-python-headless ;; yaml) mod=pyyaml ;; PIL) mod=pillow ;; sklearn) mod=scikit-learn ;; esac
+    if [ -z "$mod" ]; then echo "[job] EditReward import failed:"; echo "$out"; exit 1; fi
+    echo "[job] missing module -> pip install $mod"
+    "$PYE" -m pip install --quiet "$mod" || { echo "[job] pip install $mod failed"; exit 1; }
+  done
   CKPT=$("$PYE" -c "from huggingface_hub import snapshot_download as s; print(s('TIGER-Lab/EditReward-Qwen2.5-VL-7B'))")
   for t in "$SCRATCH"/rewardset_*.tar.gz; do tar xzf "$t" -C setin; done
   SET=$(ls -d setin/*/ | head -n1)

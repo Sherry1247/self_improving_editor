@@ -72,6 +72,8 @@ def test_variance_summary_separates_repeat_floor_from_view_spread():
     assert s["repeat_floor_max"] == 0.0
     q = s["questions"]["support"]
     assert q["mean_range"] == pytest.approx(0.30) and q["max_range"] == pytest.approx(0.30)
+    v = s["views"]["support"]
+    assert v["pad_large"] == pytest.approx(0.20) and v["pad_small"] == 0.0 and v["para2"] == pytest.approx(0.10)
 
 
 def test_ranking_stability_counts_flips():
