@@ -195,3 +195,15 @@ def test_experiment_cli_builds_its_parser(script, monkeypatch, capsys):
     with pytest.raises(SystemExit) as e:
         mod.main()
     assert e.value.code == 0 and "usage" in capsys.readouterr().out
+
+
+
+def test_violation_compare_cli_help():
+    import subprocess, sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    r = subprocess.run([sys.executable, str(root / "experiments" / "violation_compare.py"), "--help"],
+                       capture_output=True, text=True, cwd=root)
+    assert r.returncode == 0, r.stderr
+
