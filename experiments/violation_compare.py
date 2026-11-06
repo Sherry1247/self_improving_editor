@@ -27,16 +27,22 @@ def main() -> None:
     ap.add_argument("--scoreset")
     ap.add_argument("--scores", nargs="*", default=[], help="scores_*.jsonl (globs ok)")
     ap.add_argument("--combine-ref", default="editreward", help="reward column to combine with each of our critics ('' = none)")
+    ap.add_argument("--split", choices=["all", "dev", "test"], default="all",
+                    help="dev = source images _01/_02, test = _03. NOTE: for detectors chosen after looking at all 15 images "
+                         "(contact_dres) the test split is NOT held out; see docs/specs/2026-11-06-contact-detector-freeze.md")
     ap.add_argument("--name", default="vio_compare")
     ap.add_argument("--n-boot", type=int, default=2000)
     args = ap.parse_args()
     cfg = setup(args)
 
-    from src.baselines.compare import add_combinations, compare_table, load_all, pairs, smear_summary
+    from src.baselines.compare import add_combinations, compare_table, filter_split, load_all, pairs, smear_summary
 
     files = sorted({p for g in args.scores for p in glob.glob(g)})
     cj = json.load(open(args.critics, encoding="utf-8")) if args.critics else None
     T, smear = load_all(cj, args.scoreset, files)
+    T = filter_split(T, args.split)
+    smear = {k: {s: v for s, v in d.items() if args.split == "all" or (s.endswith("_03") == (args.split == "test"))}
+             for k, d in smear.items()}
     if args.combine_ref and args.combine_ref in T:
         T = add_combinations(T, args.combine_ref)
     rows = compare_table(T, args.n_boot)

@@ -20,10 +20,23 @@ import numpy as np
 from src.baselines.report import load_manifest
 from src.baselines.stats import auroc, cluster_bootstrap
 
-VIOLATIONS = ["float", "sink", "scale_up", "scale_down", "no_shadow", "color_cast", "halo"]
-BENIGN = ["shift_side", "shift_side_s"]
-CONTRASTS = [("shift_side", "float"), ("shift_side_s", "sink")]
+VIOLATIONS = ["float", "sink", "buried", "scale_up", "scale_down", "no_shadow", "color_cast", "halo"]
+BENIGN = ["shift_side", "shift_side_s", "smear_ctrl"]  # smear_ctrl: scale_down's inpainted area without any scale change
+CONTRASTS = [("shift_side", "float"), ("shift_side_s", "sink"), ("smear_ctrl", "scale_down")]
 NON_NEGATIVE = {"real", "foreign_clean"}
+
+
+def is_test(sample_id: str) -> bool:
+    """Source images ending in _03 are the test split (the same rule as experiments/build_scoring_set.py)."""
+    return sample_id.endswith("_03")
+
+
+def filter_split(T: dict, split: str) -> dict:
+    """Keep only the dev (_01, _02), test (_03) or all source images of a table T[model][kind][sample]."""
+    if split == "all":
+        return T
+    keep = (lambda s: is_test(s)) if split == "test" else (lambda s: not is_test(s))
+    return {m: {k: {s: v for s, v in d.items() if keep(s)} for k, d in kinds.items()} for m, kinds in T.items()}
 
 
 def pairs() -> list[tuple[str, str, str]]:

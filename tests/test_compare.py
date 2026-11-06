@@ -33,3 +33,12 @@ def test_combine_is_symmetric_unfitted_and_keeps_order():
     mean = lambda d: sum(d.values()) / len(d)
     assert mean(c1["null"]) > mean(c1["float"])
     assert "combo:editreward+ours:a" in add_combinations(T, "editreward")
+
+
+def test_filter_split_dev_test():
+    from src.baselines.compare import filter_split
+
+    T = {"m": {"null": {"a_01": 1.0, "a_02": 2.0, "a_03": 3.0}}}
+    assert filter_split(T, "test")["m"]["null"] == {"a_03": 3.0}
+    assert filter_split(T, "dev")["m"]["null"] == {"a_01": 1.0, "a_02": 2.0}
+    assert filter_split(T, "all") is T
