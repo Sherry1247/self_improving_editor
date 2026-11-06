@@ -5,6 +5,16 @@ pipeline (subject cut out, background plate inpainted, subject pasted back); the
 the subject back exactly where it was, each negative changes exactly ONE thing. A critic that separates
 null from a negative is therefore measuring that violation, not the inpainting / pasting artefacts.
 (The first E1 run compared against the untouched photo, which let any artefact detector look perfect.)
+
+Two confounds of the first same-pipeline suite are handled here (docs/results/2026-11-05-reward-baselines-violation-suite.md):
+  * smear: moving or shrinking the subject uncovers the Telea-inpainted hole, a clean paste hides it. Now EVERY variant
+    (null included) uses one plate inpainted over the union of the masks the variants occupy (scale_up excluded: it only covers), so the smeared region
+    is the same in all of them; the share of it left uncovered is stored per variant (``smear_visible``) as a covariate. It is NOT equalised across variants
+    (moving up uncovers more than moving sideways); analyses should stratify on it or report it next to the AUROC.
+  * "any displacement is detected": ``shift_side`` / ``shift_side_s`` move the subject sideways by the same amount as
+    ``float`` / ``sink`` and carry the ground strip under the feet with it, so the subject still stands on the ground.
+    A critic that scores float below shift_side is reacting to lost contact, not to "something moved".
+Known residual: a cast shadow that lies beside the subject is not carried along (only the strip under the feet is).
 """
 
 from __future__ import annotations
@@ -63,23 +73,57 @@ def contact_band(mask: np.ndarray, h_frac: float = 0.12) -> np.ndarray:
     return band & ~mask
 
 
+def _moved(mask: np.ndarray, dx: int = 0, dy: int = 0, scale: float = 1.0) -> np.ndarray:
+    """The subject mask after paste(...) with the same shift / scale."""
+    return paste(np.zeros(mask.shape + (3,), np.uint8), np.zeros(mask.shape + (3,), np.uint8), mask, dx, dy, scale)[1]
+
+
+def side_shift(mask: np.ndarray, frac: float) -> int:
+    """Horizontal shift of ``frac`` * subject height, towards the side of the image with more room (keeps it in frame)."""
+    box = mask_box(mask)
+    d = max(1, int(frac * (box[3] - box[1])))
+    room_right, room_left = mask.shape[1] - box[2], box[0]
+    return d if room_right >= room_left else -d
+
+
 def make_violations(img: np.ndarray, mask: np.ndarray, foreign_plate: np.ndarray | None = None) -> list[Violation]:
     mask = fill_holes(mask)  # pin-holes would let the inpainted plate show through the subject
     box = mask_box(mask)
     sh = box[3] - box[1]
-    plate = clean_plate(img, mask)
-    plate_noshadow = clean_plate(img, mask, extra=contact_band(mask))
+    dy_f, dy_s = -int(0.10 * sh), int(0.06 * sh)
+    dx_f, dx_s = side_shift(mask, 0.10), side_shift(mask, 0.06)
+    placed = {  # where the subject stands in each variant
+        "null": mask, "float": _moved(mask, dy=dy_f), "sink": _moved(mask, dy=dy_s),
+        "scale_up": _moved(mask, scale=1.35), "scale_down": _moved(mask, scale=0.7),
+        "shift_side": _moved(mask, dx=dx_f), "shift_side_s": _moved(mask, dx=dx_s),
+    }
+    union = np.zeros_like(mask)
+    for k_, m_ in placed.items():
+        if k_ != "scale_up":  # growing the subject hides the plate instead of exposing it; keeping it out stops the null
+            union |= m_       # from carrying a huge smeared ring (its smear_visible is just lower than the null's)
+    plate = clean_plate(img, mask, extra=union)  # one plate for all variants -> the same smear everywhere
+    plate_noshadow = clean_plate(img, mask, extra=union | contact_band(mask))
     out: list[Violation] = []
+    union_area = max(1, int(union.sum()))
 
     def add(kind, res, **params):
+        if kind in placed:  # share of the inpainted region (union of masks) NOT covered by the subject in this variant
+            params["smear_visible"] = round(float((union & ~res[1]).sum()) / union_area, 3)
         out.append(Violation(kind, res[0], res[1], params))
 
+    def shifted(dx: int):
+        """Subject + the ground strip under its feet moved sideways by dx (benign: still standing on the ground)."""
+        img_c, _ = paste(plate, img, mask | contact_band(mask), dx=dx)
+        return paste(img_c, img, mask, dx=dx)
+
     add("null", paste(plate, img, mask))  # positive: same pipeline, no violation
-    add("float", paste(plate, img, mask, dy=-int(0.10 * sh)), dy=-0.10)
-    add("sink", paste(plate, img, mask, dy=int(0.06 * sh)), dy=0.06)
+    add("float", paste(plate, img, mask, dy=dy_f), dy=-0.10)
+    add("sink", paste(plate, img, mask, dy=dy_s), dy=0.06)
     add("scale_up", paste(plate, img, mask, scale=1.35), scale=1.35)
     add("scale_down", paste(plate, img, mask, scale=0.7), scale=0.7)
     add("no_shadow", paste(plate_noshadow, img, mask))
+    add("shift_side", shifted(dx_f), dx=dx_f / sh)    # benign control for float
+    add("shift_side_s", shifted(dx_s), dx=dx_s / sh)  # benign control for sink
 
     # colour cast on the subject only (lighting mismatch)
     lab = to_lab(img)
