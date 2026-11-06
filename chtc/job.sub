@@ -14,6 +14,14 @@
 #   condor_submit chtc/job.sub MODE=editreward RUN=rw_vio_er   LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz GPUMEM=24000M
 #   bash chtc/pack_rescore.sh comp_v2 qwen && condor_submit chtc/job.sub MODE=vlmvar RUN=vlmvar LIST=jobs/one.txt EXTRA_IN=,chtc/rescore_in.tar.gz
 #   (same with VLM_KIND=vlm2 RUN=vlmvar2 for the second VLM; EXTRA="--limit 3" first as a smoke test)
+# Violation suite v3 (shift_side controls, shared inpainting plate; docs/results/2026-11-05-reward-baselines-violation-suite.md):
+#   condor_submit chtc/job.sub MODE=auroc RUN=e1v3 LIST=jobs/one.txt       # critics on the new suite, writes scores_by_sample.json
+#   (collect, then on the submit node)
+#   python experiments/build_scoring_set.py --name rw_v3 --violations runs/e1v3 && bash chtc/pack_rewardset.sh rw_v3
+#   condor_submit chtc/job.sub MODE=editreward RUN=rw_v3_er  LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz GPUMEM=24000M
+#   condor_submit chtc/job.sub MODE=viescore   RUN=rw_v3_vie LIST=jobs/one.txt EXTRA_IN=,chtc/rewardset_in.tar.gz GPUMEM=24000M
+#   python experiments/violation_compare.py --critics runs/e1v3/scores_by_sample.json --scoreset runs/rw_v3 \
+#       --scores runs/rw_v3_er/scores_editreward.jsonl runs/rw_v3_vie/scores_viescore_vlm.jsonl --name vio_compare
 # One job per line of LIST (a sample id). Results come back as results/result_<RUN>_<sample>.tar.gz
 # Defaults use $(VAR:default) so that command-line assignments win
 # (a plain "RUN = smoke" line in this file would override RUN=... given to condor_submit).
