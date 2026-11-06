@@ -30,6 +30,9 @@ def main() -> None:
     ap.add_argument("--split", choices=["all", "dev", "test"], default="all",
                     help="dev = source images _01/_02, test = _03. NOTE: for detectors chosen after looking at all 15 images "
                          "(contact_dres) the test split is NOT held out; see docs/specs/2026-11-06-contact-detector-freeze.md")
+    ap.add_argument("--diff", nargs=2, action="append", metavar=("A", "B"), default=[],
+                    help="paired AUROC difference A - B with a cluster-bootstrap CI on the float / buried / benign pairs "
+                         "(model names as in the table, e.g. ours:support editreward); may be given several times")
     ap.add_argument("--name", default="vio_compare")
     ap.add_argument("--n-boot", type=int, default=2000)
     args = ap.parse_args()
@@ -68,6 +71,17 @@ def main() -> None:
             x = by.get((m, r, n))
             cells.append("-" if x is None else f"{_f(x['auroc'])} [{_f(x['lo'])},{_f(x['hi'])}]")
         lines.append(f"| {m} | " + " | ".join(cells) + " |")
+    if args.diff:
+        from src.baselines.compare import paired_difference
+
+        lines += ["", "## Paired AUROC difference A - B (cluster bootstrap over source images; CI excluding 0 = they differ)", "",
+                  "| A | B | pair (pos vs neg) | diff [95% CI] | n images |", "|---|---|---|---|---|"]
+        for a_, b_ in args.diff:
+            for role, pk, nk in [x for x in pairs() if x[0] != "benign"] + [x for x in pairs() if x[0] == "benign"]:
+                if a_ in T and b_ in T and nk in T[a_] and nk in T[b_]:
+                    d, lo, hi, n = paired_difference(T, a_, b_, pk, nk, args.n_boot)
+                    if d is not None:
+                        lines.append(f"| {a_} | {b_} | {role}: {pk} vs {nk} | {d:+.2f} [{_f(lo)},{_f(hi)}] | {n} |")
     (out / "compare.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     print(f"\n-> {out}")

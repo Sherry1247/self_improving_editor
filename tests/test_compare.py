@@ -42,3 +42,17 @@ def test_filter_split_dev_test():
     assert filter_split(T, "test")["m"]["null"] == {"a_03": 3.0}
     assert filter_split(T, "dev")["m"]["null"] == {"a_01": 1.0, "a_02": 2.0}
     assert filter_split(T, "all") is T
+
+
+def test_paired_difference_detects_a_real_gap_and_not_a_tie():
+    from src.baselines.compare import paired_difference
+
+    T = _mk_T(8)
+    T["good"] = {k: dict(v) for k, v in T["ours:a"].items()}
+    T["bad"] = {k: dict(v) for k, v in T["ours:a"].items()}
+    for s in T["bad"]["float"]:                       # 'bad' cannot tell the float from the shift
+        T["bad"]["float"][s] = T["bad"]["shift_side"][s]
+    d, lo, hi, n = paired_difference(T, "good", "bad", "shift_side", "float", n_boot=100)
+    assert n == 8 and d > 0.3 and lo > 0
+    d0, lo0, hi0, _ = paired_difference(T, "good", "good", "shift_side", "float", n_boot=100)
+    assert d0 == 0 and lo0 == 0 and hi0 == 0

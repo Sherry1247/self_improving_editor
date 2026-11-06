@@ -101,6 +101,22 @@ def compare_table(T: dict, n_boot: int = 2000) -> list[dict]:
     return rows
 
 
+def paired_difference(T: dict, a: str, b: str, pos: str, neg: str, n_boot: int = 2000, seed: int = 0):
+    """AUROC(a) - AUROC(b) on the same (pos, neg) pair with a cluster bootstrap over source images (both models resampled together).
+    Returns (diff, lo, hi, n_images); a CI that excludes 0 says a and b differ on this pair, which two overlapping CIs cannot."""
+    ta, tb = T[a], T[b]
+    cl = {}
+    for s in set(ta.get(pos, {})) & set(ta.get(neg, {})) & set(tb.get(pos, {})) & set(tb.get(neg, {})):
+        cl[s] = ([(ta[pos][s], tb[pos][s])], [(ta[neg][s], tb[neg][s])])
+
+    def stat(P, N):
+        ra = auroc([p[0] for p in P], [n[0] for n in N])
+        rb = auroc([p[1] for p in P], [n[1] for n in N])
+        return None if ra is None or rb is None else ra - rb
+
+    return (*cluster_bootstrap(cl, stat, n_boot, seed), len(cl))
+
+
 def smear_summary(smear: dict) -> dict[str, float]:
     """kind -> mean share of the inpainted region left uncovered (critic_auroc.py's scores_by_sample.json['smear_visible'])."""
     return {k: float(np.mean(list(v.values()))) for k, v in smear.items() if v}
