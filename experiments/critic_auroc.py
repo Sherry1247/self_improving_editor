@@ -32,7 +32,7 @@ def main():
         samples = [s for s in samples if s.sample_id in args.samples]
     run = new_run_dir(cfg, args.name)
     # evaluate every critic, including ablation-only ones that are disabled in the loop
-    for extra in ("contact_shadow",):
+    for extra in ("contact_shadow", "light_cochange", "unchanged_bg"):  # ablation / exploratory critics, evaluated here too
         if extra not in cfg["critics"]["enabled"]:
             cfg["critics"]["enabled"].append(extra)
     _, perceiver, evaluator = build_evaluation_stack(cfg)
@@ -40,6 +40,8 @@ def main():
     imgs = {s.sample_id: prepare_image(Path(cfg["paths"]["images"]) / s.filename, cfg["paths"]["cache"],
                                        cfg["image"]["long_side"]) for s in samples}
     scores: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))  # critic -> kind -> scores
+    by_sample: dict[str, dict[str, dict[str, float]]] = defaultdict(lambda: defaultdict(dict))  # critic -> kind -> sample -> score
+    smear: dict[str, dict[str, float]] = defaultdict(dict)  # kind -> sample -> share of the smeared region left visible
     for k, s in enumerate(samples):
         spec = build_tasks([s], tuple(cfg["targets"]), cfg["include_swap"])[0][1]
         img = imgs[s.sample_id]
@@ -49,7 +51,11 @@ def main():
         other = samples[(k + 1) % len(samples)]
         o_per = perceiver.perceive_cached(imgs[other.sample_id], spec, other.sample_id)
         foreign = clean_plate(imgs[other.sample_id], o_per.subject_mask)
-        variants = [("real", img)] + [(v.kind, v.image) for v in make_violations(img, before.subject_mask, foreign)]
+        vios = make_violations(img, before.subject_mask, foreign)
+        variants = [("real", img)] + [(v.kind, v.image) for v in vios]
+        for v in vios:
+            if "smear_visible" in v.params:
+                smear[v.kind][s.sample_id] = v.params["smear_visible"]
         for kind, vimg in variants:
             if vimg.shape != img.shape:
                 continue
@@ -58,6 +64,7 @@ def main():
             for name, c in ev.critics.items():
                 if c.score is not None:
                     scores[name][kind].append(c.score)
+                    by_sample[name][kind][s.sample_id] = c.score
         print(f"[{k + 1}/{len(samples)}] {s.sample_id}: {len(variants)} variants")
 
     kinds = sorted({k for d in scores.values() for k in d if k not in ("real", "null", "foreign_clean")})
@@ -74,6 +81,7 @@ def main():
         w.writeheader()
         w.writerows(table)
     write_json({k: {kk: vv for kk, vv in v.items()} for k, v in scores.items()}, run / "raw_scores.json")
+    write_json({"scores": by_sample, "smear_visible": smear}, run / "scores_by_sample.json")  # input for CIs / combination
     print("\nAUROC (1.0 = critic always scores the null paste higher than the violation; 0.5 = blind)")
     print("critic".ljust(16) + "".join(k[:10].rjust(11) for k in kinds))
     for row in table:

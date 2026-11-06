@@ -20,7 +20,8 @@ from PIL import Image
 
 from common import ROOT, base_parser, new_run_dir, setup
 
-KINDS = ["color_cast", "float", "foreign_clean", "halo", "no_shadow", "null", "real", "scale_down", "scale_up", "sink"]
+KINDS = ["color_cast", "float", "foreign_clean", "halo", "no_shadow", "null", "real", "scale_down", "scale_up", "shift_side_s",
+         "shift_side", "sink"]
 VIOLATION_INSTRUCTION = ("Place the subject into this scene so that the result looks like a natural, physically "
                          "plausible photograph.")
 
