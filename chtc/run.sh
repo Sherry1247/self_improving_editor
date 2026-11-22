@@ -9,6 +9,7 @@
 #        repair  -> experiments/region_repair.py (contact/boundary local repair ablation; needs sdxl_inpaint)
 #        residue -> experiments/old_scene_residue_check.py (unchanged old-scene blobs + overlay panels; same bundle)
 #        contactdiag -> experiments/support_diagnostics.py (why support fails on sink; signed gap / ground-plane features, no VLM)
+#        lightint -> experiments/lighting_intervention.py (does the paper's light normalisation L separate lighting from structure? 15 photos, no editor, no VLM)
 #        vlmvar  -> experiments/vlm_variance.py (VLM answer stability under question / crop / resolution views; rescore bundle)
 #        viescore   -> experiments/score_viescore.py (VIEScore-style judge over a scoring set; chtc/pack_rewardset.sh bundle)
 #        editreward -> experiments/score_editreward.py (EditReward, own venv: transformers==4.57.0; same scoring-set bundle)
@@ -84,7 +85,7 @@ MODELS="grounding_dino sam2 dinov2 siglip depth vlm"
 if [ "$MODE" = "repair" ]; then MODELS="$MODELS sdxl_inpaint"; fi
 if [ "$MODE" = "vlmvar" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth $VLM_KIND"; fi
 if [ "$MODE" = "viescore" ]; then MODELS="$VLM_KIND"; fi
-if [ "$MODE" = "contactdiag" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth"; fi
+if [ "$MODE" = "contactdiag" ] || [ "$MODE" = "lightint" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth"; fi
 if [ "$MODE" = "loop" ] || [ "$MODE" = "check" ]; then
   case "$EDITOR" in
     compositing) MODELS="$MODELS sdxl_inpaint" ;;
@@ -100,6 +101,7 @@ case "$MODE" in
   loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
   auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
   contactdiag) "$PY" experiments/support_diagnostics.py "${OVR[@]}" --name "$RUN" "$@" ;;
+  lightint) "$PY" experiments/lighting_intervention.py "${OVR[@]}" --name "$RUN" "$@" ;;
   viescore)
     mkdir -p setin runs
     for t in "$SCRATCH"/rewardset_*.tar.gz; do tar xzf "$t" -C setin; done
