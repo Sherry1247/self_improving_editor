@@ -22,6 +22,9 @@ and raw texture_cos / app_zncc), which were designed from the lint1 findings and
 
     python experiments/lighting_criteria.py --run runs/lint2 [--run runs/lint1]
 Writes criteria.csv and criteria.json into the (first) run directory.
+
+    python experiments/lighting_criteria.py --real runs/rl1
+Bands of REAL editor outputs against the synthetic ladder of the same photo (real.csv + ladder.csv from experiments/real_lighting.py); writes bands.csv.
 """
 
 from __future__ import annotations
@@ -124,10 +127,71 @@ def analyse(rows: list[dict], photos: list[str]) -> dict:
     return res
 
 
+def band_of(v: float, nuis: float, light3: list[float], struct: list[float]) -> tuple[str, bool]:
+    """('A' | 'B' | 'C', structure_like) of one real score against the same photo's synthetic ladder (higher score = more preserved).
+    A: >= nuisance score; B: below it but not below the weakest LIGHT level-3 variant; C: below every LIGHT level-3 variant.
+    structure_like: below the median of the STRUCT level >= 2 variants."""
+    band = "A" if v >= nuis else ("B" if not light3 or v >= min(light3) else "C")
+    return band, bool(struct) and v < float(np.median(struct))
+
+
+def bands(real: list[dict], ladder: list[dict], measures: list[str]) -> dict:
+    """{run: {measure: {n, A, B, C, D}}}: shares of real outputs per band. Outputs without a subject or a score are skipped."""
+    ref: dict[str, dict] = defaultdict(lambda: {"nuis": {}, "light3": defaultdict(list), "struct": defaultdict(list)})
+    for r in ladder:
+        for m in measures:
+            v = r.get(m)
+            if v is None:
+                continue
+            if r["family"] == "nuisance":
+                ref[r["sample"]]["nuis"][m] = v
+            elif r["family"] == "light" and r["level"] == 3:
+                ref[r["sample"]]["light3"][m].append(v)
+            elif r["family"] == "struct" and r["level"] >= 2:
+                ref[r["sample"]]["struct"][m].append(v)
+    out: dict = defaultdict(dict)
+    for run in sorted({r["run"] for r in real}):
+        for m in measures:
+            counts = {"A": 0, "B": 0, "C": 0, "D": 0}
+            n = 0
+            for r in real:
+                v = r.get(m)
+                nu = ref[r["sample"]]["nuis"].get(m)
+                if r["run"] != run or v is None or nu is None:
+                    continue
+                b, d = band_of(v, nu, ref[r["sample"]]["light3"][m], ref[r["sample"]]["struct"][m])
+                counts[b] += 1
+                counts["D"] += d
+                n += 1
+            if n:
+                out[run][m] = {"n": n, **{k: c / n for k, c in counts.items()}}
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--run", action="append", required=True, help="run directory with variants.csv (first one receives the outputs)")
+    ap.add_argument("--run", action="append", help="run directory with variants.csv (first one receives the outputs)")
+    ap.add_argument("--real", help="run directory with real.csv and ladder.csv (experiments/real_lighting.py): band table per editor")
     args = ap.parse_args()
+    if args.real:
+        d = Path(args.real)
+        real, ladder = load(d / "real.csv"), load(d / "ladder.csv")
+        table = bands(real, ladder, [m for m in ALL if any(r.get(m) is not None for r in real)])
+        with open(d / "bands.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["run", "measure", "n", "A_within_noise", "B_within_lighting", "C_beyond_lighting", "D_structure_like"])
+            for run, ms in table.items():
+                for m, e in ms.items():
+                    w.writerow([run, m, e["n"], *(f"{e[k]:.3f}" for k in "ABCD")])
+        for run, ms in table.items():
+            print(f"\n== {run}: share of real outputs per band (A noise, B within strongest synthetic lighting, C beyond it, D structure-like) ==")
+            print("measure".ljust(16) + "n".rjust(5) + "A".rjust(7) + "B".rjust(7) + "C".rjust(7) + "D".rjust(7))
+            for m, e in ms.items():
+                print(m.ljust(16) + f"{e['n']:5d}" + "".join(f"{e[k]:7.2f}" for k in "ABCD"))
+        print(f"\n-> {d}/bands.csv")
+        return
+    if not args.run:
+        ap.error("give --run or --real")
     out = {}
     for run in args.run:
         rows = load(Path(run) / "variants.csv")

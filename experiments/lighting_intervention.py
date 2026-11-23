@@ -55,6 +55,43 @@ def ksil_paper(regions, after_mask) -> float | None:
     return float((b & after_mask).sum() / b.sum()) if b.any() else None
 
 
+def score_pair(perceiver, critics: dict, app_v2, before, after_img: np.ndarray, spec, regions_before, emb_before: dict) -> dict:
+    """All Keep-type measures of ``after_img`` against the perceived ``before`` photo (used for variants here and for real editor outputs
+    in experiments/real_lighting.py). emb_before = {"lab": emb, "rgb": emb} of the l_image crops of the before photo."""
+    from src.critics import CriticContext
+    from src.regions import partition
+    from src.utils.geometry import erode, warp_image
+    from validation.interventions import chroma_terms, l_image
+
+    after = perceiver.perceive(after_img, spec)
+    row = {"subject_found": int(after.subject_count > 0 and after.subject_mask.any())}
+    if not row["subject_found"]:
+        return row
+    regions = partition(after.subject_mask, before.subject_mask)
+    ctx = CriticContext(before, after, regions, spec, regions_before)
+    res = {n: c.evaluate(ctx) for n, c in critics.items()}
+    row["silhouette"] = res["silhouette"].score
+    row["ksil_paper"] = ksil_paper(regions, after.subject_mask)
+    row["appearance_v3"] = res["appearance"].score          # None when the alignment is unreliable
+    row["appearance_v2"] = app_v2.evaluate(ctx).score
+    row["texture"] = res["texture"].score
+    row["identity_raw"] = res["identity"].evidence.get("cosine")
+    row["texture_cos"] = res["texture"].evidence.get("patch_cosine")
+    row["app_zncc"] = res["appearance"].evidence.get("zncc")
+    row["app_chroma"] = res["appearance"].evidence.get("chroma")
+    h, w = after.shape
+    region = erode(regions.aligned_before_subject & after.subject_mask, 2)
+    if regions.transform and region.sum() >= 50:           # same registered region as the appearance critic
+        ct = chroma_terms(warp_image(before.image, regions.transform, before.subject_mask, (h, w)), after_img, region)
+        row.update(ct)
+        st = res["appearance"].evidence.get("structure")
+        row["appearance_v3c"] = None if st is None or not ct else float(st) * ct["chroma_std"]
+    for sp in ("lab", "rgb"):
+        emb_a = perceiver.dino(l_image(after_img, after.subject_mask, sp), after.subject_mask)[0]
+        row[f"kapp_{sp}"] = cos(emb_before[sp], emb_a)
+    return row
+
+
 def split_of(sample_id: str) -> str:
     return "test" if sample_id.endswith("_03") else "dev"
 
@@ -108,14 +145,13 @@ def main():
     cfg = setup(args)
     cfg["perception"]["use_vlm"] = False            # no VLM here: only the Keep-type measures are tested
 
-    from src.critics import CriticContext, build_critics
+    from src.critics import build_critics
     from src.critics.keep import AppearanceCritic
     from src.data import build_tasks, load_samples, prepare_image, save_image
     from src.models import ModelRegistry
     from src.perception import Perceiver
     from src.regions import partition
-    from src.utils.geometry import erode, warp_image
-    from validation.interventions import build_variants, chroma_terms, l_image
+    from validation.interventions import build_variants, l_image
     from validation.violations import clean_plate
 
     samples = load_samples(cfg["paths"]["labels"])
@@ -139,32 +175,9 @@ def main():
         plate = clean_plate(img, before.subject_mask)
         emb_before = {sp: perceiver.dino(l_image(img, before.subject_mask, sp), before.subject_mask)[0] for sp in ("lab", "rgb")}
         for v in build_variants(img, before.subject_mask, plate, bg_mask=None):
-            after = perceiver.perceive(v.image, spec)
-            regions = partition(after.subject_mask, before.subject_mask)
-            ctx = CriticContext(before, after, regions, spec, regions_before)
-            res = {n: c.evaluate(ctx) for n, c in critics.items()}
             row = {"sample": s.sample_id, "split": split_of(s.sample_id), "family": v.family, "kind": v.kind, "name": v.name,
-                   "level": v.level, "subject_found": int(after.subject_count > 0 and after.subject_mask.any())}
-            if row["subject_found"]:
-                row["silhouette"] = res["silhouette"].score
-                row["ksil_paper"] = ksil_paper(regions, after.subject_mask)
-                row["appearance_v3"] = res["appearance"].score          # None when the alignment is unreliable
-                row["appearance_v2"] = app_v2.evaluate(ctx).score
-                row["texture"] = res["texture"].score
-                row["identity_raw"] = res["identity"].evidence.get("cosine")
-                row["texture_cos"] = res["texture"].evidence.get("patch_cosine")
-                row["app_zncc"] = res["appearance"].evidence.get("zncc")
-                row["app_chroma"] = res["appearance"].evidence.get("chroma")
-                h, w = after.shape
-                region = erode(regions.aligned_before_subject & after.subject_mask, 2)
-                if regions.transform and region.sum() >= 50:   # same registered region as the appearance critic
-                    ct = chroma_terms(warp_image(before.image, regions.transform, before.subject_mask, (h, w)), v.image, region)
-                    row.update(ct)
-                    st = res["appearance"].evidence.get("structure")
-                    row["appearance_v3c"] = None if st is None or not ct else float(st) * ct["chroma_std"]
-                for sp in ("lab", "rgb"):
-                    emb_a = perceiver.dino(l_image(v.image, after.subject_mask, sp), after.subject_mask)[0]
-                    row[f"kapp_{sp}"] = cos(emb_before[sp], emb_a)
+                   "level": v.level}
+            row.update(score_pair(perceiver, critics, app_v2, before, v.image, spec, regions_before, emb_before))
             rows.append(row)
             if k < args.examples:
                 save_image(v.image, run / "examples" / f"{s.sample_id}_{v.name}.jpg")

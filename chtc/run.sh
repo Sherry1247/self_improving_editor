@@ -9,6 +9,7 @@
 #        repair  -> experiments/region_repair.py (contact/boundary local repair ablation; needs sdxl_inpaint)
 #        residue -> experiments/old_scene_residue_check.py (unchanged old-scene blobs + overlay panels; same bundle)
 #        contactdiag -> experiments/support_diagnostics.py (why support fails on sink; signed gap / ground-plane features, no VLM)
+#        reallight -> experiments/real_lighting.py (real editor outputs placed on the synthetic lighting / structure ladder; rescore bundle, no VLM)
 #        lightint -> experiments/lighting_intervention.py (does the paper's light normalisation L separate lighting from structure? 15 photos, no editor, no VLM)
 #        vlmvar  -> experiments/vlm_variance.py (VLM answer stability under question / crop / resolution views; rescore bundle)
 #        viescore   -> experiments/score_viescore.py (VIEScore-style judge over a scoring set; chtc/pack_rewardset.sh bundle)
@@ -85,7 +86,7 @@ MODELS="grounding_dino sam2 dinov2 siglip depth vlm"
 if [ "$MODE" = "repair" ]; then MODELS="$MODELS sdxl_inpaint"; fi
 if [ "$MODE" = "vlmvar" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth $VLM_KIND"; fi
 if [ "$MODE" = "viescore" ]; then MODELS="$VLM_KIND"; fi
-if [ "$MODE" = "contactdiag" ] || [ "$MODE" = "lightint" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth"; fi
+if [ "$MODE" = "contactdiag" ] || [ "$MODE" = "lightint" ] || [ "$MODE" = "reallight" ]; then MODELS="grounding_dino sam2 dinov2 siglip depth"; fi
 if [ "$MODE" = "loop" ] || [ "$MODE" = "check" ]; then
   case "$EDITOR" in
     compositing) MODELS="$MODELS sdxl_inpaint" ;;
@@ -107,13 +108,14 @@ case "$MODE" in
     for t in "$SCRATCH"/rewardset_*.tar.gz; do tar xzf "$t" -C setin; done
     SET=$(ls -d setin/*/ | head -n1)
     "$PY" experiments/score_viescore.py "${OVR[@]}" --name "$RUN" --scoreset "$SET" --vlm-kind "$VLM_KIND" "$@" ;;
-  rescore|covtest|residue|repair|vlmvar)
+  rescore|covtest|residue|repair|vlmvar|reallight)
     SRCS=()
     mkdir -p rescore_in
     for t in "$SCRATCH"/rescore_*.tar.gz; do tar xzf "$t" -C rescore_in; done
     for d in rescore_in/runs/*/; do SRCS+=("$d"); done
     case "$MODE" in
       covtest) SCRIPT=experiments/covariance_test.py ;;
+      reallight) SCRIPT=experiments/real_lighting.py ;;
       residue) SCRIPT=experiments/old_scene_residue_check.py ;;
       repair)  SCRIPT=experiments/region_repair.py ;;
       vlmvar)  SCRIPT=experiments/vlm_variance.py; set -- --vlm-kind "$VLM_KIND" "$@" ;;

@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments"))
-from lighting_criteria import analyse, flags, share  # noqa: E402
+from lighting_criteria import analyse, band_of, bands, flags, share  # noqa: E402
 
 
 def rows_for(photos, scores):
@@ -41,3 +41,16 @@ def test_tie_is_not_beyond_noise_and_missing_values_are_skipped():
             {"sample": "p", "family": "light", "kind": "gain", "level": 2.0, "name": "g2", "m": None}]
     fl = flags(rows, "m", lambda r: r["family"] == "light")
     assert fl == {"p": {"g1": False}} and share(fl) == 0.0
+
+
+def test_bands_place_real_scores_against_the_photos_own_ladder():
+    assert band_of(0.95, 0.90, [0.7, 0.8], [0.3, 0.5]) == ("A", False)       # inside re-encoding noise
+    assert band_of(0.85, 0.90, [0.7, 0.8], [0.3, 0.5]) == ("B", False)       # worse than noise, within the strongest lighting edit
+    assert band_of(0.60, 0.90, [0.7, 0.8], [0.3, 0.5]) == ("C", False)       # beyond every lighting edit
+    assert band_of(0.20, 0.90, [0.7, 0.8], [0.3, 0.5]) == ("C", True)        # and below the median structure edit
+    ladder = [{"sample": "p", "family": "nuisance", "level": 0.0, "m": 0.9}, {"sample": "p", "family": "light", "level": 3.0, "m": 0.7},
+              {"sample": "p", "family": "light", "level": 3.0, "m": 0.8}, {"sample": "p", "family": "struct", "level": 2.0, "m": 0.3},
+              {"sample": "p", "family": "struct", "level": 3.0, "m": 0.5}]
+    real = [{"run": "e", "sample": "p", "m": v} for v in (0.95, 0.85, 0.6, 0.2)] + [{"run": "e", "sample": "p", "m": None}]
+    t = bands(real, ladder, ["m"])["e"]["m"]
+    assert t["n"] == 4 and t["A"] == t["B"] == 0.25 and t["C"] == 0.5 and t["D"] == 0.25

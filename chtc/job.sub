@@ -31,6 +31,8 @@
 #   python experiments/violation_compare.py --critics runs/cdiag4/scores_by_sample.json --name cdiag4_cmp --combine-ref ""   (add --split dev / test to split)
 # Lighting-intervention test of the paper's light normalisation L (docs/plans item 1; criteria P0-P3 fixed in the script docstring):
 #   condor_submit chtc/job.sub MODE=lightint RUN=lint1 LIST=jobs/one.txt GPUMEM=24000M          (EXTRA="--samples dog_sit_river_01 --examples 1" first as a smoke test)
+# Real editor outputs on the synthetic lighting / structure ladder (experiments/real_lighting.py; smoke first with EXTRA="--limit 2"):
+#   bash chtc/pack_rescore.sh comp_v2 qwen ip2p_v2 && condor_submit chtc/job.sub MODE=reallight RUN=rl1 LIST=jobs/one.txt GPUMEM=24000M EXTRA_IN=,chtc/rescore_in.tar.gz
 # One job per line of LIST (a sample id). Results come back as results/result_<RUN>_<sample>.tar.gz
 # Defaults use $(VAR:default) so that command-line assignments win
 # (a plain "RUN = smoke" line in this file would override RUN=... given to condor_submit).
