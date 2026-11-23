@@ -199,3 +199,25 @@ def l_image(img: np.ndarray, mask: np.ndarray, space: str = "lab") -> np.ndarray
     out = img.copy()
     out[mask] = rgb[mask].round().astype(np.uint8)
     return out
+
+
+# ------------------------------------------- colour terms that ignore a global cast
+def chroma_terms(before_warp: np.ndarray, after: np.ndarray, region: np.ndarray, floor: float = 1.0) -> dict:
+    """Two colour measures inside ``region`` that do not count a uniform colour-temperature shift as a change.
+
+    chroma_std  exp(-d), d = mean distance between the per-channel standardised (a, b) of the two images (std floored at ``floor`` Lab
+                units so a nearly uniform subject does not amplify noise). Standardising removes mean and spread, i.e. a cast and a chroma gain.
+    chroma_cov  exp(-d / 0.5), d = ||cov_after - cov_before||_F / trace(cov_before) of the (a, b) values: the SHAPE of the colour
+                distribution. A uniform shift leaves it unchanged; rotating every pixel's hue rotates it (when the colours vary).
+    Caveat: for a single-coloured subject a hue rotation and a cast are nearly the same edit, so neither term can tell them apart there.
+    """
+    if region.sum() < 50:
+        return {}
+    ab_b = cv2.cvtColor(before_warp.astype(np.float32) / 255.0, cv2.COLOR_RGB2LAB)[..., 1:][region]
+    ab_a = cv2.cvtColor(after.astype(np.float32) / 255.0, cv2.COLOR_RGB2LAB)[..., 1:][region]
+    zb = (ab_b - ab_b.mean(0)) / (ab_b.std(0) + floor)
+    za = (ab_a - ab_a.mean(0)) / (ab_a.std(0) + floor)
+    d_z = float(np.linalg.norm(za - zb, axis=-1).mean())
+    sb, sa = np.cov(ab_b.T), np.cov(ab_a.T)
+    d_cov = float(np.linalg.norm(sa - sb) / (np.trace(sb) + 1e-6))
+    return {"chroma_std": float(np.exp(-d_z)), "chroma_cov": float(np.exp(-d_cov / 0.5))}

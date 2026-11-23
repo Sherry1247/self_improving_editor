@@ -24,6 +24,8 @@ A measure PASSES when P1, P2 and P3 all hold with the point estimate; it is repo
 cosine (no L) does not, i.e. L is what makes the difference. Dev = photos *_01, *_02; test = *_03 (reported separately, once).
 
     python experiments/lighting_intervention.py --name lint1
+Also scores chroma_std / chroma_cov (colour terms blind to a global cast) and appearance_v3c = v3 structure x chroma_std. The magnitude criteria
+(share of variants beyond the re-encoding noise) are applied afterwards, offline, by experiments/lighting_criteria.py.
 Writes variants.csv (every variant x measure), summary.csv / summary.json (criteria), by_kind.csv (mean score drop per kind and level),
 scores_by_sample.json, and examples/<photo>_<variant>.jpg for the first two photos.
 """
@@ -112,7 +114,8 @@ def main():
     from src.models import ModelRegistry
     from src.perception import Perceiver
     from src.regions import partition
-    from validation.interventions import build_variants, l_image
+    from src.utils.geometry import erode, warp_image
+    from validation.interventions import build_variants, chroma_terms, l_image
     from validation.violations import clean_plate
 
     samples = load_samples(cfg["paths"]["labels"])
@@ -152,6 +155,13 @@ def main():
                 row["texture_cos"] = res["texture"].evidence.get("patch_cosine")
                 row["app_zncc"] = res["appearance"].evidence.get("zncc")
                 row["app_chroma"] = res["appearance"].evidence.get("chroma")
+                h, w = after.shape
+                region = erode(regions.aligned_before_subject & after.subject_mask, 2)
+                if regions.transform and region.sum() >= 50:   # same registered region as the appearance critic
+                    ct = chroma_terms(warp_image(before.image, regions.transform, before.subject_mask, (h, w)), v.image, region)
+                    row.update(ct)
+                    st = res["appearance"].evidence.get("structure")
+                    row["appearance_v3c"] = None if st is None or not ct else float(st) * ct["chroma_std"]
                 for sp in ("lab", "rgb"):
                     emb_a = perceiver.dino(l_image(v.image, after.subject_mask, sp), after.subject_mask)[0]
                     row[f"kapp_{sp}"] = cos(emb_before[sp], emb_a)

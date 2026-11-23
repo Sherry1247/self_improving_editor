@@ -84,3 +84,19 @@ def test_summarize_separates_a_good_measure_from_a_blind_one():
     good, blind = summarize(rows, "good", ids), summarize(rows, "blind", ids)
     assert good["PASS"] and good["PASS_clearly"] and good["P1"]["auroc"] <= 0.65 and good["P3"]["auroc"] == 1.0
     assert not blind["PASS"]
+
+
+def test_chroma_terms_ignore_a_cast_but_see_hue_and_texture_of_colour():
+    from validation.interventions import chroma_terms
+    rng = np.random.default_rng(3)
+    img = np.full((120, 120, 3), 100, np.uint8)
+    mask = np.zeros((120, 120), bool)
+    mask[20:100, 20:100] = True
+    img[mask] = np.clip(np.array([150, 100, 70]) + rng.normal(0, 25, (mask.sum(), 3)), 0, 255).astype(np.uint8)  # varied colours
+    same = chroma_terms(img, img, mask)
+    cast = chroma_terms(img, light_cast(img, mask, 14, 20), mask)
+    hue = chroma_terms(img, hue_rotate(img, mask, 90), mask)
+    assert same["chroma_std"] == 1.0 and same["chroma_cov"] == 1.0
+    assert cast["chroma_std"] > 0.8 and cast["chroma_cov"] > 0.8
+    assert hue["chroma_cov"] < cast["chroma_cov"] - 0.1
+    assert chroma_terms(img, img, np.zeros_like(mask)) == {}
