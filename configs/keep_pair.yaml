@@ -1,0 +1,13 @@
+# CANDIDATE Keep design, not the default: the identity gate is removed and the v3 appearance critic is split into its two factors
+# (app_structure = high-pass luminance ZNCC, app_chroma = colour pattern after removing the mean cast), both in the Keep branch.
+# Why: docs/results/2026-11-23-real-editor-bands.md (identity / silhouette / patch cosine flag 33-99% of an untouched pasted subject;
+# the pixel measures flag 0%). Status of the checks K1-K3: docs/results/ (keep redesign). Use on top of chtc.yaml:
+#   --config configs/chtc.yaml --config configs/keep_pair.yaml
+critics:
+  enabled: [subject_count, bg_changed,
+            silhouette, app_structure, app_chroma, texture,
+            bg_semantic, old_bg_residue, vlm_background,
+            support, light_harmony, halo,
+            vlm_support, vlm_shadow, vlm_surface, vlm_integration, vlm_lighting]
+aggregation:
+  weights: {app_structure: 1.0, app_chroma: 1.0}

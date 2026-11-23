@@ -9,6 +9,8 @@
 #        repair  -> experiments/region_repair.py (contact/boundary local repair ablation; needs sdxl_inpaint)
 #        residue -> experiments/old_scene_residue_check.py (unchanged old-scene blobs + overlay panels; same bundle)
 #        contactdiag -> experiments/support_diagnostics.py (why support fails on sink; signed gap / ground-plane features, no VLM)
+#        keepsuite -> experiments/keep_redesign.py --part suite     (raw result of every critic on the v4 violation suite; all critics + app_structure / app_chroma)
+#        keepcopy  -> experiments/keep_redesign.py --part copypaste (pasted / relit / degraded versions of real editor outputs; rescore bundle)
 #        reallight -> experiments/real_lighting.py (real editor outputs placed on the synthetic lighting / structure ladder; rescore bundle, no VLM)
 #        lightint -> experiments/lighting_intervention.py (does the paper's light normalisation L separate lighting from structure? 15 photos, no editor, no VLM)
 #        vlmvar  -> experiments/vlm_variance.py (VLM answer stability under question / crop / resolution views; rescore bundle)
@@ -101,6 +103,7 @@ case "$MODE" in
   check) "$PY" experiments/check_env.py "${OVR[@]}" "$@" | tee "check_${RUN}.txt"; mkdir -p runs/$RUN; cp "check_${RUN}.txt" runs/$RUN/ ;;
   loop)  "$PY" experiments/run_loop.py "${OVR[@]}" --name "$RUN" --samples "$SAMPLE" "$@" ;;
   auroc) "$PY" experiments/critic_auroc.py "${OVR[@]}" --name "$RUN" "$@" ;;
+  keepsuite) "$PY" experiments/keep_redesign.py "${OVR[@]}" --part suite --name "$RUN" "$@" ;;
   contactdiag) "$PY" experiments/support_diagnostics.py "${OVR[@]}" --name "$RUN" "$@" ;;
   lightint) "$PY" experiments/lighting_intervention.py "${OVR[@]}" --name "$RUN" "$@" ;;
   viescore)
@@ -108,7 +111,7 @@ case "$MODE" in
     for t in "$SCRATCH"/rewardset_*.tar.gz; do tar xzf "$t" -C setin; done
     SET=$(ls -d setin/*/ | head -n1)
     "$PY" experiments/score_viescore.py "${OVR[@]}" --name "$RUN" --scoreset "$SET" --vlm-kind "$VLM_KIND" "$@" ;;
-  rescore|covtest|residue|repair|vlmvar|reallight)
+  rescore|covtest|residue|repair|vlmvar|reallight|keepcopy)
     SRCS=()
     mkdir -p rescore_in
     for t in "$SCRATCH"/rescore_*.tar.gz; do tar xzf "$t" -C rescore_in; done
@@ -116,6 +119,7 @@ case "$MODE" in
     case "$MODE" in
       covtest) SCRIPT=experiments/covariance_test.py ;;
       reallight) SCRIPT=experiments/real_lighting.py ;;
+      keepcopy)  SCRIPT=experiments/keep_redesign.py; set -- --part copypaste "$@" ;;
       residue) SCRIPT=experiments/old_scene_residue_check.py ;;
       repair)  SCRIPT=experiments/region_repair.py ;;
       vlmvar)  SCRIPT=experiments/vlm_variance.py; set -- --vlm-kind "$VLM_KIND" "$@" ;;

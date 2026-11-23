@@ -5,13 +5,13 @@ from __future__ import annotations
 from src.critics.base import Critic, CriticContext
 from src.critics.follow import BackgroundSemanticCritic, OldBackgroundResidueCritic, UnchangedBackgroundCritic
 from src.critics.gate import BackgroundChangedCritic, IdentityCritic, SubjectCountCritic
-from src.critics.keep import AppearanceCritic, SilhouetteCritic, TextureCritic
+from src.critics.keep import AppearanceChromaCritic, AppearanceCritic, AppearanceStructureCritic, SilhouetteCritic, TextureCritic
 from src.critics.vlm import VLM_CRITICS
 from src.critics.world import ContactShadowCritic, HaloCritic, LightCoChangeCritic, LightHarmonyCritic, SupportCritic
 
 CRITICS: dict[str, type[Critic]] = {c.name: c for c in [
     SubjectCountCritic, IdentityCritic, BackgroundChangedCritic,
-    SilhouetteCritic, AppearanceCritic, TextureCritic,
+    SilhouetteCritic, AppearanceCritic, AppearanceStructureCritic, AppearanceChromaCritic, TextureCritic,
     BackgroundSemanticCritic, OldBackgroundResidueCritic, UnchangedBackgroundCritic,
     SupportCritic, ContactShadowCritic, LightHarmonyCritic, LightCoChangeCritic, HaloCritic, *VLM_CRITICS,
 ]}

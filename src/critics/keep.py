@@ -152,26 +152,28 @@ class AppearanceCritic(Critic):
 
     name, branch = "appearance", "keep"
 
-    def evaluate(self, ctx: CriticContext) -> CriticResult:
+    def _prepare(self, ctx: CriticContext):
+        """Registered before / after subject pixels. None = no subject; ("small", n) = too little overlap; else a dict."""
         r = ctx.regions
         if not r.transform or not ctx.after.subject_mask.any():
-            return self.not_applicable("missing subject mask")
+            return None
         h, w = ctx.after.shape
         before_warp = warp_image(ctx.before.image, r.transform, ctx.before.subject_mask, (h, w))
         region = erode(r.aligned_before_subject & ctx.after.subject_mask, 2)
         if region.sum() < 50:
-            return self.result(0.0, [IssueType.SUBJECT_DRIFT], overlap_px=int(region.sum()))
+            return ("small", int(region.sum()))
         lab_b, lab_a = to_lab(before_warp), to_lab(ctx.after.image)
         lab_a_norm = reinhard_match(lab_a, region, lab_b, region)  # removes global lighting / cast change
         diff = np.abs(lab_a_norm - lab_b)[region]
         d = float((diff * np.array([0.5, 1.0, 1.0])).sum(-1).mean())
         raw = float(np.abs(lab_a - lab_b)[region].sum(-1).mean())
-        v2_score = float(np.exp(-d / self.p("sigma", 20.0)))
-        if self.p("variant", "v3") == "v2":
-            score = v2_score
-            issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
-            return self.result(score, issues, normalized_dist=d, raw_dist=raw, variant="v2")
+        return {"lab_b": lab_b, "lab_a": lab_a, "region": region, "d": d, "raw": raw,
+                "v2_score": float(np.exp(-d / self.p("sigma", 20.0)))}
 
+    def _v3_parts(self, ctx: CriticContext, P: dict) -> dict:
+        """The two factors of the v3 score: ``structure`` (high-pass ZNCC, ramped) and ``chroma`` (colour pattern after removing the mean cast)."""
+        r = ctx.regions
+        lab_b, lab_a, region = P["lab_b"], P["lab_a"], P["region"]
         # --- alignment quality: appearance is only meaningful if the two subjects were actually registered
         align_iou = mask_iou(r.aligned_before_subject, ctx.after.subject_mask)
         sigma = max(2.0, self.p("highpass_frac", 0.05) * float(np.sqrt(region.sum())))
@@ -181,22 +183,72 @@ class AppearanceCritic(Critic):
         zncc_raw = multiscale_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma, scales)
         zncc, shift = refine_zncc(lab_b[..., 0], lab_a[..., 0], region, sigma,
                                   self.p("max_shift_frac", 0.08) * float(np.sqrt(region.sum())), zncc_raw, scales)
-        if align_iou < self.p("unreliable_iou", 0.5) and self.p("unreliable_policy", "na") == "na":
-            # The silhouette changed so much that a pixel comparison says nothing about texture. Do NOT score
-            # this as 'zero appearance': flag it, the silhouette / identity / texture critics judge the change.
-            return self.result(None, [], variant="v3", unreliable_alignment=True, align_iou=float(align_iou),
-                               zncc=zncc, zncc_raw=zncc_raw, shift=shift)
+        unreliable = bool(align_iou < self.p("unreliable_iou", 0.5) and self.p("unreliable_policy", "na") == "na")
         structure = ramp(zncc, self.p("zncc_lo", 0.2), self.p("zncc_hi", 0.8))
         # chroma: remove only the global mean shift (a cast is lighting), keep the spatial colour pattern
         ab_b, ab_a = lab_b[..., 1:], lab_a[..., 1:]
         cshift = ab_a[region].mean(0) - ab_b[region].mean(0)
         chroma_d = float(np.linalg.norm((ab_a - cshift - ab_b)[region], axis=-1).mean())
         chroma = float(np.exp(-chroma_d / self.p("chroma_sigma", 30.0)))
-        score = structure * chroma
+        return {"zncc": zncc, "zncc_raw": zncc_raw, "zncc_fine": zncc_fine, "zncc_by_scale": by_scale, "shift": shift,
+                "align_iou": float(align_iou), "unreliable": unreliable, "structure": structure, "chroma_dist": chroma_d,
+                "chroma": chroma}
+
+    def evaluate(self, ctx: CriticContext) -> CriticResult:
+        P = self._prepare(ctx)
+        if P is None:
+            return self.not_applicable("missing subject mask")
+        if isinstance(P, tuple):
+            return self.result(0.0, [IssueType.SUBJECT_DRIFT], overlap_px=P[1])
+        if self.p("variant", "v3") == "v2":
+            score = P["v2_score"]
+            issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
+            return self.result(score, issues, normalized_dist=P["d"], raw_dist=P["raw"], variant="v2")
+        q = self._v3_parts(ctx, P)
+        if q["unreliable"]:
+            # The silhouette changed so much that a pixel comparison says nothing about texture. Do NOT score
+            # this as 'zero appearance': flag it, the silhouette / identity / texture critics judge the change.
+            return self.result(None, [], variant="v3", unreliable_alignment=True, align_iou=q["align_iou"],
+                               zncc=q["zncc"], zncc_raw=q["zncc_raw"], shift=q["shift"])
+        score = q["structure"] * q["chroma"]
         issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
-        return self.result(score, issues, variant="v3", zncc=zncc, zncc_raw=zncc_raw, zncc_fine=zncc_fine, zncc_by_scale=by_scale, shift=shift,
-                           align_iou=float(align_iou), unreliable_alignment=False, structure=structure,
-                           chroma_dist=chroma_d, chroma=chroma, normalized_dist=d, raw_dist=raw, v2_score=v2_score)
+        return self.result(score, issues, variant="v3", zncc=q["zncc"], zncc_raw=q["zncc_raw"], zncc_fine=q["zncc_fine"],
+                           zncc_by_scale=q["zncc_by_scale"], shift=q["shift"], align_iou=q["align_iou"],
+                           unreliable_alignment=False, structure=q["structure"], chroma_dist=q["chroma_dist"],
+                           chroma=q["chroma"], normalized_dist=P["d"], raw_dist=P["raw"], v2_score=P["v2_score"])
+
+
+class _AppearanceFactor(AppearanceCritic):
+    """One factor of the v3 appearance score as a critic of its own (Keep branch). Same parameters and alignment rule as ``appearance``."""
+
+    factor = "structure"
+
+    def evaluate(self, ctx: CriticContext) -> CriticResult:
+        P = self._prepare(ctx)
+        if P is None:
+            return self.not_applicable("missing subject mask")
+        if isinstance(P, tuple):
+            return self.result(0.0, [IssueType.SUBJECT_DRIFT], overlap_px=P[1])
+        q = self._v3_parts(ctx, P)
+        if q["unreliable"]:
+            return self.result(None, [], unreliable_alignment=True, align_iou=q["align_iou"], zncc=q["zncc"])
+        score = q[self.factor]
+        issues = [IssueType.SUBJECT_DRIFT] if score < self.p("issue_below", 0.4) else []
+        return self.result(score, issues, zncc=q["zncc"], zncc_raw=q["zncc_raw"], shift=q["shift"], align_iou=q["align_iou"],
+                           chroma_dist=q["chroma_dist"], **{self.factor: score})
+
+
+class AppearanceStructureCritic(_AppearanceFactor):
+    """Fine structure of the subject (texture, edges, pattern) preserved? High-pass luminance ZNCC, ramped; blind to lighting by construction
+    (docs/results/2026-11-23-lighting-magnitude.md: beyond re-encoding noise on 0.00 of lighting level 1-2, 1.00 of blur / shuffle / mirror)."""
+
+    name, factor = "app_structure", "structure"
+
+
+class AppearanceChromaCritic(_AppearanceFactor):
+    """Colour pattern of the subject preserved after removing the mean colour cast? exp(-d / sigma) of the (a, b) difference."""
+
+    name, factor = "app_chroma", "chroma"
 
 
 class TextureCritic(Critic):
