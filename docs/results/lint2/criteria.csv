@@ -1,0 +1,43 @@
+run,group,measure,light12,light12_lo,light12_hi,light3,blur,shuffle,hue,mirror,eligible,covers
+/tmp/lint2/runs/lint2,all,silhouette,0.024,0.000,0.067,0.04,0.00,0.07,0.00,1.00,True,mirror
+/tmp/lint2/runs/lint2,all,ksil_paper,0.145,0.055,0.267,0.21,0.07,0.20,0.23,1.00,False,mirror
+/tmp/lint2/runs/lint2,all,appearance_v3,0.073,0.030,0.121,0.31,0.63,0.60,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,all,appearance_v2,0.042,0.018,0.073,0.21,0.97,0.00,1.00,1.00,True,blur hue mirror
+/tmp/lint2/runs/lint2,all,texture,0.000,0.000,0.000,0.00,0.40,0.30,0.00,0.93,True,mirror
+/tmp/lint2/runs/lint2,all,texture_cos,0.327,0.242,0.412,0.76,1.00,1.00,0.97,1.00,False,blur shuffle hue mirror
+/tmp/lint2/runs/lint2,all,identity_raw,0.042,0.006,0.091,0.31,1.00,1.00,0.73,0.53,True,blur shuffle
+/tmp/lint2/runs/lint2,all,kapp_lab,0.012,0.000,0.030,0.05,0.97,1.00,0.77,0.53,True,blur shuffle
+/tmp/lint2/runs/lint2,all,kapp_rgb,0.006,0.000,0.018,0.15,1.00,1.00,0.60,0.53,True,blur shuffle
+/tmp/lint2/runs/lint2,all,app_zncc,0.000,0.000,0.000,0.11,1.00,1.00,0.00,1.00,True,blur shuffle mirror
+/tmp/lint2/runs/lint2,all,app_chroma,0.073,0.030,0.121,0.31,0.57,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,all,chroma_std,0.067,0.030,0.103,0.23,0.57,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,all,chroma_cov,0.236,0.145,0.345,0.45,1.00,0.07,1.00,0.20,False,blur hue
+/tmp/lint2/runs/lint2,all,appearance_v3c,0.067,0.030,0.103,0.23,0.63,0.37,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,dev,silhouette,0.000,0.000,0.000,0.02,0.00,0.05,0.00,1.00,True,mirror
+/tmp/lint2/runs/lint2,dev,ksil_paper,0.145,0.027,0.309,0.20,0.10,0.20,0.20,1.00,False,mirror
+/tmp/lint2/runs/lint2,dev,appearance_v3,0.073,0.027,0.127,0.28,0.60,0.60,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,dev,appearance_v2,0.055,0.018,0.091,0.18,0.95,0.00,1.00,1.00,True,blur hue mirror
+/tmp/lint2/runs/lint2,dev,texture,0.000,0.000,0.000,0.00,0.30,0.30,0.00,1.00,True,mirror
+/tmp/lint2/runs/lint2,dev,texture_cos,0.255,0.173,0.345,0.70,1.00,1.00,0.95,1.00,False,blur shuffle hue mirror
+/tmp/lint2/runs/lint2,dev,identity_raw,0.045,0.000,0.109,0.32,1.00,1.00,0.70,0.60,True,blur shuffle
+/tmp/lint2/runs/lint2,dev,kapp_lab,0.018,0.000,0.045,0.04,0.95,1.00,0.75,0.60,True,blur shuffle
+/tmp/lint2/runs/lint2,dev,kapp_rgb,0.009,0.000,0.027,0.16,1.00,1.00,0.55,0.60,True,blur shuffle
+/tmp/lint2/runs/lint2,dev,app_zncc,0.000,0.000,0.000,0.10,1.00,1.00,0.00,1.00,True,blur shuffle mirror
+/tmp/lint2/runs/lint2,dev,app_chroma,0.073,0.027,0.127,0.28,0.50,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,dev,chroma_std,0.073,0.027,0.118,0.20,0.50,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,dev,chroma_cov,0.182,0.109,0.255,0.44,1.00,0.00,1.00,0.10,False,blur hue
+/tmp/lint2/runs/lint2,dev,appearance_v3c,0.073,0.027,0.118,0.20,0.60,0.40,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,test,silhouette,0.073,0.000,0.182,0.08,0.00,0.10,0.00,1.00,True,mirror
+/tmp/lint2/runs/lint2,test,ksil_paper,0.145,0.018,0.291,0.24,0.00,0.20,0.30,1.00,False,mirror
+/tmp/lint2/runs/lint2,test,appearance_v3,0.073,0.000,0.164,0.36,0.70,0.60,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,test,appearance_v2,0.018,0.000,0.055,0.28,1.00,0.00,1.00,1.00,True,blur hue mirror
+/tmp/lint2/runs/lint2,test,texture,0.000,0.000,0.000,0.00,0.60,0.30,0.00,0.80,True,mirror
+/tmp/lint2/runs/lint2,test,texture_cos,0.473,0.364,0.564,0.88,1.00,1.00,1.00,1.00,False,blur shuffle hue mirror
+/tmp/lint2/runs/lint2,test,identity_raw,0.036,0.000,0.109,0.28,1.00,1.00,0.80,0.40,True,blur shuffle hue
+/tmp/lint2/runs/lint2,test,kapp_lab,0.000,0.000,0.000,0.08,1.00,1.00,0.80,0.40,True,blur shuffle hue
+/tmp/lint2/runs/lint2,test,kapp_rgb,0.000,0.000,0.000,0.12,1.00,1.00,0.70,0.40,True,blur shuffle
+/tmp/lint2/runs/lint2,test,app_zncc,0.000,0.000,0.000,0.12,1.00,1.00,0.00,1.00,True,blur shuffle mirror
+/tmp/lint2/runs/lint2,test,app_chroma,0.073,0.000,0.164,0.36,0.70,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,test,chroma_std,0.055,0.000,0.109,0.28,0.70,0.00,1.00,1.00,True,hue mirror
+/tmp/lint2/runs/lint2,test,chroma_cov,0.345,0.127,0.600,0.48,1.00,0.20,1.00,0.40,False,blur hue
+/tmp/lint2/runs/lint2,test,appearance_v3c,0.055,0.000,0.109,0.28,0.70,0.30,1.00,1.00,True,hue mirror
